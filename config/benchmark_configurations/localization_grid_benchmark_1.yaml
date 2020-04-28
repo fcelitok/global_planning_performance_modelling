@@ -1,0 +1,4 @@
+supervisor_component: localization_benchmark_supervisor
+supervisor_configuration: localization_benchmark_supervisor/localization_benchmark_supervisor.yaml
+components_configurations:
+  amcl: [amcl/amcl_1.yaml]
