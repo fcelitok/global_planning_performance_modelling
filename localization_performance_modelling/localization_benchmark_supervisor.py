@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import time
 import traceback
 
 import rclpy
-from rclpy.logging import LoggingSeverity
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
@@ -26,8 +24,9 @@ from performance_modelling_py.utils import backup_file_if_exists, print_info, pr
 def main(args=None):
     rclpy.init(args=args)
 
+    node = LocalizationBenchmarkSupervisor()
+
     try:
-        node = LocalizationBenchmarkSupervisor()
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
@@ -149,7 +148,7 @@ class LocalizationBenchmarkSupervisor(Node):
         try:
             with open(ps_snapshot_file_path, 'wb') as ps_snapshot_file:
                 pickle.dump(processes_dicts_list, ps_snapshot_file)
-        except TypeError as e:
+        except TypeError:
             print_error(traceback.format_exc())
 
         self.ps_snapshot_count += 1

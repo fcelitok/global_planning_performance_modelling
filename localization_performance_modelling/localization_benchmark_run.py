@@ -30,7 +30,7 @@ class BenchmarkRun(object):
         # environment parameters
         self.environment_folder = environment_folder
         self.map_info_file_path = path.join(environment_folder, "map.yaml")
-        self.stage_world_file_path = path.join(environment_folder, "environment.world")
+        self.world_model_file = path.join(environment_folder, "gazebo_environment.model")
 
         # run parameters
         self.run_id = run_id
@@ -61,12 +61,6 @@ class BenchmarkRun(object):
 
             backup_file_if_exists(configuration_copy_absolute_path)
             shutil.copyfile(configuration_path, configuration_copy_absolute_path)
-
-            with open(configuration_copy_absolute_path) as component_configuration_file:
-                component_configuration = yaml.load(component_configuration_file)
-            component_configuration[component_name]['ros__parameters']['use_sim_time'] = self.use_sim_time
-            with open(configuration_copy_absolute_path, 'w') as component_configuration_file:
-                yaml.dump(component_configuration, component_configuration_file, default_flow_style=False)
 
         supervisor_configuration_copy_relative_path = path.join("components_configuration", "{}_{}".format("supervisor", path.basename(self.supervisor_configuration_file)))
         self.supervisor_configuration_copy_absolute_path = path.join(self.run_output_folder, supervisor_configuration_copy_relative_path)
@@ -115,35 +109,37 @@ class BenchmarkRun(object):
         # components parameters
         # Component.common_parameters = {'headless': self.headless,
         #                                'output': self.components_ros_output}
-        # environment_params = {'stage_world_file': self.stage_world_file}
         # recorder_params = {'bag_file_path': path.join(self.run_output_folder, "odom_tf_ground_truth.bag")}
-        # explorer_params = {'configuration': self.component_configuration_files['explore_lite']}
-        # navigation_params = {'configuration': self.component_configuration_files['move_base']}
-        localization_params = {'params_file': self.component_configuration_files['amcl'],
+
+        print(self.component_configuration_files)
+
+        environment_params = {'world_model_file': self.world_model_file,
+                              'headless': self.headless}
+        localization_params = {'params_file': self.component_configuration_files['nav2_amcl'],
                                'map': self.map_info_file_path,
                                'use_sim_time': str(self.use_sim_time),
                                'autostart': str(self.autostart_amcl)}
+        navigation_params = {'params_file': self.component_configuration_files['nav2_navigation'],
+                             'use_sim_time': str(self.use_sim_time),
+                             'autostart': str(self.autostart_amcl)}
         supervisor_params = {'configuration': self.supervisor_configuration_copy_absolute_path}
 
         # declare components
         # rviz = Component('rviz', 'localization_performance_modelling', 'rviz.launch.py')
-        # environment = Component('stage', 'localization_performance_modelling', 'stage.launch.py', environment_params)
         # recorder = Component('recorder', 'localization_performance_modelling', 'rosbag_recorder.launch.py', recorder_params)
-        # navigation = Component('move_base', 'localization_performance_modelling', 'move_base.launch.py', navigation_params)
-        # explorer = Component('explore_lite', 'localization_performance_modelling', 'explore_lite.launch.py', explorer_params)
-        localization = Component('amcl', 'localization_performance_modelling', 'localization.launch.py', localization_params)
+        environment = Component('gazebo', 'localization_performance_modelling', 'gazebo.launch.py', environment_params)
+        localization = Component('nav2_amcl', 'localization_performance_modelling', 'nav2_amcl.launch.py', localization_params)
+        navigation = Component('nav2_navigation', 'localization_performance_modelling', 'nav2_navigation.launch.py', navigation_params)
         supervisor = Component('supervisor', 'localization_performance_modelling', 'localization_benchmark_supervisor.launch.py', supervisor_params)
 
-        # launch roscore and setup a node to monitor ros
-        # rospy.init_node("benchmark_monitor", anonymous=True)  TODO
+        # TODO manage launch exceptions in Component.__init__
 
         # launch components
         print_info("execute_run: launching components")
         # rviz.launch()
-        # environment.launch()
         # recorder.launch()
-        # navigation.launch()
-        # explorer.launch()
+        environment.launch()
+        navigation.launch()
         localization.launch()
 
         # wait for the supervisor component to finish
@@ -154,17 +150,12 @@ class BenchmarkRun(object):
         print_info("execute_run: supervisor has shutdown")
         self.log(event="supervisor_shutdown")
 
-        # if rospy.is_shutdown():  TODO
-        #     print_error("execute_run: supervisor finished by ros_shutdown")
-        #     self.ros_has_shutdown = True
-
         # shutdown remaining components
-        # explorer.shutdown()
-        # navigation.shutdown()
         # recorder.shutdown()
-        # environment.shutdown()
         # rviz.shutdown()
+        navigation.shutdown()
         localization.shutdown()
+        environment.shutdown()
         print_info("execute_run: components shutdown completed")
 
         # # compute all relevant metrics and visualisations
