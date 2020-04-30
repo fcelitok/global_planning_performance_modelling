@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import sys
+import time
 import traceback
 
 import rclpy
@@ -8,6 +10,8 @@ from rclpy.logging import LoggingSeverity
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
+
+import tf2_ros
 
 import copy
 import pickle
@@ -22,13 +26,11 @@ from performance_modelling_py.utils import backup_file_if_exists, print_info, pr
 def main(args=None):
     rclpy.init(args=args)
 
-    print("\n\nTEST PRINT\n\n")
-
-    node = LocalizationBenchmarkSupervisor()
-
-    rclpy.spin(node)
-
-    # node.shutdown_callback()
+    try:
+        node = LocalizationBenchmarkSupervisor()
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
 
     node.destroy_node()
     rclpy.shutdown()
@@ -129,6 +131,7 @@ class LocalizationBenchmarkSupervisor(Node):
         ps_snapshot_file_path = path.join(self.ps_output_folder, "ps_{i:08d}.pkl".format(i=self.ps_snapshot_count))
 
         processes_dicts_list = list()
+        print("self.ps_processes", self.ps_processes)
         for process in self.ps_processes:
             try:
                 process_copy = copy.deepcopy(process.as_dict())  # get all information about the process
@@ -144,7 +147,7 @@ class LocalizationBenchmarkSupervisor(Node):
             except KeyError:
                 pass
         try:
-            with open(ps_snapshot_file_path, 'w') as ps_snapshot_file:
+            with open(ps_snapshot_file_path, 'wb') as ps_snapshot_file:
                 pickle.dump(processes_dicts_list, ps_snapshot_file)
         except TypeError as e:
             print_error(traceback.format_exc())

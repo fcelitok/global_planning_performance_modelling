@@ -1,6 +1,6 @@
 localization_benchmark_supervisor:
   ros__parameters:
-    run_timeout: 60.0
+    run_timeout: 30.0
     ps_snapshot_period: 10.0
     cmd_vel_topic: /cmd_vel
     scan_topic: /base_scan

@@ -119,10 +119,10 @@ class BenchmarkRun(object):
         # recorder_params = {'bag_file_path': path.join(self.run_output_folder, "odom_tf_ground_truth.bag")}
         # explorer_params = {'configuration': self.component_configuration_files['explore_lite']}
         # navigation_params = {'configuration': self.component_configuration_files['move_base']}
-        localization_params = {'params': self.component_configuration_files['amcl'],
+        localization_params = {'params_file': self.component_configuration_files['amcl'],
                                'map': self.map_info_file_path,
-                               'use_sim_time': self.use_sim_time,
-                               'autostart': self.autostart_amcl}
+                               'use_sim_time': str(self.use_sim_time),
+                               'autostart': str(self.autostart_amcl)}
         supervisor_params = {'configuration': self.supervisor_configuration_copy_absolute_path}
 
         # declare components
@@ -131,7 +131,7 @@ class BenchmarkRun(object):
         # recorder = Component('recorder', 'localization_performance_modelling', 'rosbag_recorder.launch.py', recorder_params)
         # navigation = Component('move_base', 'localization_performance_modelling', 'move_base.launch.py', navigation_params)
         # explorer = Component('explore_lite', 'localization_performance_modelling', 'explore_lite.launch.py', explorer_params)
-        localization = Component('gmapping', 'localization_performance_modelling', 'localization.launch.py', localization_params)
+        localization = Component('amcl', 'localization_performance_modelling', 'localization.launch.py', localization_params)
         supervisor = Component('supervisor', 'localization_performance_modelling', 'localization_benchmark_supervisor.launch.py', supervisor_params)
 
         # launch roscore and setup a node to monitor ros
@@ -145,13 +145,11 @@ class BenchmarkRun(object):
         # navigation.launch()
         # explorer.launch()
         localization.launch()
-        supervisor.launch()
 
         # wait for the supervisor component to finish
         print_info("execute_run: waiting for supervisor to finish")
         self.log(event="waiting_supervisor_finish")
-
-        supervisor.wait_to_finish()
+        supervisor.launch_and_wait_to_finish()
 
         print_info("execute_run: supervisor has shutdown")
         self.log(event="supervisor_shutdown")
