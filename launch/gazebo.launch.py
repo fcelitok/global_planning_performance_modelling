@@ -14,9 +14,7 @@
 
 """This is all-in-one launch script intended for use by nav2 developers."""
 
-import os
-
-from ament_index_python.packages import get_package_share_directory
+# from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, SetEnvironmentVariable
@@ -32,11 +30,6 @@ def generate_launch_description():
     namespace = LaunchConfiguration('namespace')
     use_remappings = LaunchConfiguration('use_remappings')
 
-    # Launch configuration variables specific to simulation
-    use_robot_state_pub = LaunchConfiguration('use_robot_state_pub')
-    headless = LaunchConfiguration('headless')
-    world = LaunchConfiguration('world_model_file')
-
     # TODO(orduno) Remove once `PushNodeRemapping` is resolved
     #              https://github.com/ros2/launch_ros/issues/56
     remappings = [((namespace, '/tf'), '/tf'),
@@ -51,7 +44,7 @@ def generate_launch_description():
         description='Top-level namespace')
 
     declare_use_remappings_cmd = DeclareLaunchArgument(
-        'use_remappings', default_value='false',
+        'use_remappings', default_value='False',
         description='Arguments to pass to all nodes launched by the file')
 
     declare_use_robot_state_pub_cmd = DeclareLaunchArgument(
@@ -61,35 +54,37 @@ def generate_launch_description():
 
     declare_simulator_cmd = DeclareLaunchArgument(
         'headless',
-        default_value='false',
+        default_value='False',
         description='Whether to execute gzclient)')
 
     declare_world_cmd = DeclareLaunchArgument(
         'world_model_file',
         description='Full path to world model file to load')
 
+    declare_urdf_cmd = DeclareLaunchArgument(
+        'robot_urdf_file',
+        description='Full path to robot urdf model file to load')
+
     # Specify the actions
     start_gazebo_server_cmd = ExecuteProcess(
-        cmd=['gzserver', '--verbose', '-s', 'libgazebo_ros_init.so', world],
-        output='screen')
+        cmd=['gzserver', '--verbose', '-s', 'libgazebo_ros_init.so', LaunchConfiguration('world_model_file')],
+        output='log')
 
     start_gazebo_client_cmd = ExecuteProcess(
-        condition=IfCondition(PythonExpression(['not ', headless])),
+        condition=IfCondition(PythonExpression(['not ', LaunchConfiguration('headless')])),
         cmd=['gzclient'],
-        output='screen')
-
-    urdf = os.path.join(get_package_share_directory('turtlebot3_description'), 'urdf', 'turtlebot3_waffle.urdf')
+        output='log')
 
     start_robot_state_publisher_cmd = Node(
-        condition=IfCondition(use_robot_state_pub),
+        condition=IfCondition(LaunchConfiguration('use_robot_state_pub')),
         package='robot_state_publisher',
         node_executable='robot_state_publisher',
         node_name='robot_state_publisher',
-        output='screen',
-        parameters=[{'use_sim_time': 'true'}],
+        output='log',
+        parameters=[{'use_sim_time': True}],
         use_remappings=IfCondition(use_remappings),
         remappings=remappings,
-        arguments=[urdf])
+        arguments=[LaunchConfiguration('robot_urdf_file')])
 
     # Create the launch description and populate
     ld = LaunchDescription()
@@ -104,6 +99,7 @@ def generate_launch_description():
 
     ld.add_action(declare_simulator_cmd)
     ld.add_action(declare_world_cmd)
+    ld.add_action(declare_urdf_cmd)
 
     # Add any conditioned actions
     ld.add_action(start_gazebo_server_cmd)

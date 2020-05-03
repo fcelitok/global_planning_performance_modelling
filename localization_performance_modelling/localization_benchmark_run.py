@@ -31,6 +31,7 @@ class BenchmarkRun(object):
         self.environment_folder = environment_folder
         self.map_info_file_path = path.join(environment_folder, "map.yaml")
         self.world_model_file = path.join(environment_folder, "gazebo_environment.model")
+        self.robot_urdf_file = path.join(environment_folder, "robot.urdf")
 
         # run parameters
         self.run_id = run_id
@@ -38,7 +39,7 @@ class BenchmarkRun(object):
         self.components_ros_output = 'screen' if show_ros_info else 'log'
         self.headless = headless
         self.use_sim_time = False  # TODO to be set True when using a simulator (Stage, Gazebo, etc)
-        self.autostart_amcl = True
+        self.autostart_components = False
 
         # run variables
         self.aborted = False
@@ -113,19 +114,32 @@ class BenchmarkRun(object):
 
         print(self.component_configuration_files)
 
-        environment_params = {'world_model_file': self.world_model_file,
-                              'headless': self.headless}
-        localization_params = {'params_file': self.component_configuration_files['nav2_amcl'],
-                               'map': self.map_info_file_path,
-                               'use_sim_time': str(self.use_sim_time),
-                               'autostart': str(self.autostart_amcl)}
-        navigation_params = {'params_file': self.component_configuration_files['nav2_navigation'],
-                             'use_sim_time': str(self.use_sim_time),
-                             'autostart': str(self.autostart_amcl)}
-        supervisor_params = {'configuration': self.supervisor_configuration_copy_absolute_path}
+        rviz_params = {
+            'rviz_config_file': self.component_configuration_files['rviz'],
+        }
+        environment_params = {
+            'world_model_file': self.world_model_file,
+            'robot_urdf_file': self.robot_urdf_file,
+            'headless': True,  # TODO headless
+        }
+        localization_params = {
+            'params_file': self.component_configuration_files['nav2_amcl'],
+            'map': self.map_info_file_path,
+            'use_sim_time': str(self.use_sim_time),
+            'autostart': str(self.autostart_components),
+        }
+        navigation_params = {
+            'params_file': self.component_configuration_files['nav2_navigation'],
+            'use_sim_time': str(self.use_sim_time),
+            'autostart': str(self.autostart_components),
+            'map_subscribe_transient_local': True,
+        }
+        supervisor_params = {
+            'configuration': self.supervisor_configuration_copy_absolute_path
+        }
 
         # declare components
-        # rviz = Component('rviz', 'localization_performance_modelling', 'rviz.launch.py')
+        rviz = Component('rviz', 'localization_performance_modelling', 'rviz.launch.py', rviz_params)
         # recorder = Component('recorder', 'localization_performance_modelling', 'rosbag_recorder.launch.py', recorder_params)
         environment = Component('gazebo', 'localization_performance_modelling', 'gazebo.launch.py', environment_params)
         localization = Component('nav2_amcl', 'localization_performance_modelling', 'nav2_amcl.launch.py', localization_params)
@@ -136,7 +150,7 @@ class BenchmarkRun(object):
 
         # launch components
         print_info("execute_run: launching components")
-        # rviz.launch()
+        rviz.launch()
         # recorder.launch()
         environment.launch()
         navigation.launch()
@@ -152,7 +166,7 @@ class BenchmarkRun(object):
 
         # shutdown remaining components
         # recorder.shutdown()
-        # rviz.shutdown()
+        rviz.shutdown()
         navigation.shutdown()
         localization.shutdown()
         environment.shutdown()

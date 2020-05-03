@@ -20,7 +20,6 @@ def generate_launch_description():
     bt_xml_file = LaunchConfiguration('bt_xml_file')
     use_lifecycle_mgr = LaunchConfiguration('use_lifecycle_mgr')
     use_remappings = LaunchConfiguration('use_remappings')
-    map_subscribe_transient_local = LaunchConfiguration('map_subscribe_transient_local')
 
     # TODO(orduno) Remove once `PushNodeRemapping` is resolved
     #              https://github.com/ros2/launch_ros/issues/56
@@ -34,7 +33,7 @@ def generate_launch_description():
         'use_sim_time': use_sim_time,
         'bt_xml_filename': bt_xml_file,
         'autostart': autostart,
-        'map_subscribe_transient_local': map_subscribe_transient_local}
+    }
 
     configured_params = RewrittenYaml(
             source_file=params_file,
@@ -76,10 +75,6 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'use_remappings', default_value='false',
             description='Arguments to pass to all nodes launched by the file'),
-
-        DeclareLaunchArgument(
-            'map_subscribe_transient_local', default_value='false',
-            description='Whether to set the map subscriber QoS to transient local'),
 
         Node(
             package='nav2_controller',

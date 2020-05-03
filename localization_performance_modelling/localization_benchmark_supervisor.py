@@ -130,7 +130,6 @@ class LocalizationBenchmarkSupervisor(Node):
         ps_snapshot_file_path = path.join(self.ps_output_folder, "ps_{i:08d}.pkl".format(i=self.ps_snapshot_count))
 
         processes_dicts_list = list()
-        print("self.ps_processes", self.ps_processes)
         for process in self.ps_processes:
             try:
                 process_copy = copy.deepcopy(process.as_dict())  # get all information about the process

@@ -4,3 +4,4 @@ supervisor_configuration: localization_benchmark_supervisor/localization_benchma
 components_configurations:
   nav2_amcl: [nav2_amcl/nav2_amcl_1.yaml]
   nav2_navigation: [nav2_navigation/nav2_navigation_1.yaml]
+  rviz: [rviz/nav2_default_view.rviz]
