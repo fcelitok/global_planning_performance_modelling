@@ -38,8 +38,7 @@ class BenchmarkRun(object):
         self.run_output_folder = run_output_folder
         self.components_ros_output = 'screen' if show_ros_info else 'log'
         self.headless = headless
-        self.use_sim_time = False  # TODO to be set True when using a simulator (Stage, Gazebo, etc)
-        self.autostart_components = False
+        self.use_sim_time = True
 
         # run variables
         self.aborted = False
@@ -112,8 +111,6 @@ class BenchmarkRun(object):
         #                                'output': self.components_ros_output}
         # recorder_params = {'bag_file_path': path.join(self.run_output_folder, "odom_tf_ground_truth.bag")}
 
-        print(self.component_configuration_files)
-
         rviz_params = {
             'rviz_config_file': self.component_configuration_files['rviz'],
         }
@@ -125,17 +122,16 @@ class BenchmarkRun(object):
         localization_params = {
             'params_file': self.component_configuration_files['nav2_amcl'],
             'map': self.map_info_file_path,
-            'use_sim_time': str(self.use_sim_time),
-            'autostart': str(self.autostart_components),
+            'use_sim_time': self.use_sim_time,
         }
         navigation_params = {
             'params_file': self.component_configuration_files['nav2_navigation'],
-            'use_sim_time': str(self.use_sim_time),
-            'autostart': str(self.autostart_components),
+            'use_sim_time': self.use_sim_time,
             'map_subscribe_transient_local': True,
         }
         supervisor_params = {
-            'configuration': self.supervisor_configuration_copy_absolute_path
+            'configuration': self.supervisor_configuration_copy_absolute_path,
+            'use_sim_time': self.use_sim_time
         }
 
         # declare components
@@ -160,7 +156,6 @@ class BenchmarkRun(object):
         print_info("execute_run: waiting for supervisor to finish")
         self.log(event="waiting_supervisor_finish")
         supervisor.launch_and_wait_to_finish()
-
         print_info("execute_run: supervisor has shutdown")
         self.log(event="supervisor_shutdown")
 

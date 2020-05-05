@@ -2,5 +2,12 @@ localization_benchmark_supervisor:
   ros__parameters:
     run_timeout: 10000.0
     ps_snapshot_period: 10.0
+    write_estimated_poses_period: 0.1
     cmd_vel_topic: /cmd_vel
-    scan_topic: /base_scan
+    scan_topic: /scan
+    estimated_pose_correction_topic: /amcl_pose
+    ground_truth_pose_topic: /ground_truth/base_footprint/odom
+    lifecycle_manager_service: /lifecycle_manager/manage_nodes
+    initial_pose_topic: /initialpose
+    localization_node_transition_event_topic: /amcl/transition_event
+    navigate_to_pose_action_name: /NavigateToPose

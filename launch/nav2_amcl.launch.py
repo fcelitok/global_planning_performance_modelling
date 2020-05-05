@@ -1,7 +1,3 @@
-import os
-
-from ament_index_python.packages import get_package_share_directory
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
 from launch.conditions import IfCondition
@@ -12,15 +8,10 @@ from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description():
-    # Get the launch directory
-    bringup_dir = get_package_share_directory('nav2_bringup')
-
     namespace = LaunchConfiguration('namespace')
     map_yaml_file = LaunchConfiguration('map')
     use_sim_time = LaunchConfiguration('use_sim_time')
-    autostart = LaunchConfiguration('autostart')
     params_file = LaunchConfiguration('params_file')
-    use_lifecycle_mgr = LaunchConfiguration('use_lifecycle_mgr')
     use_remappings = LaunchConfiguration('use_remappings')
 
     # TODO(orduno) Remove once `PushNodeRemapping` is resolved
@@ -46,12 +37,12 @@ def generate_launch_description():
         SetEnvironmentVariable('RCUTILS_CONSOLE_STDOUT_LINE_BUFFERED', '1'),
 
         DeclareLaunchArgument(
-            'namespace', default_value='',
+            'namespace',
+            default_value='',
             description='Top-level namespace'),
 
         DeclareLaunchArgument(
             'map',
-            default_value=os.path.join(bringup_dir, 'maps', 'turtlebot3_world.yaml'),
             description='Full path to map yaml file to load'),
 
         DeclareLaunchArgument(
@@ -59,20 +50,12 @@ def generate_launch_description():
             description='Use simulation (Gazebo) clock if true'),
 
         DeclareLaunchArgument(
-            'autostart', default_value='true',
-            description='Automatically startup the nav2 stack'),
-
-        DeclareLaunchArgument(
             'params_file',
-            default_value=os.path.join(bringup_dir, 'params', 'nav2_params.yaml'),
             description='Full path to the ROS2 parameters file to use'),
 
         DeclareLaunchArgument(
-            'use_lifecycle_mgr', default_value='true',
-            description='Whether to launch the lifecycle manager'),
-
-        DeclareLaunchArgument(
-            'use_remappings', default_value='false',
+            'use_remappings',
+            default_value='false',
             description='Arguments to pass to all nodes launched by the file'),
 
         Node(
@@ -93,13 +76,4 @@ def generate_launch_description():
             use_remappings=IfCondition(use_remappings),
             remappings=remappings),
 
-        Node(
-            condition=IfCondition(use_lifecycle_mgr),
-            package='nav2_lifecycle_manager',
-            node_executable='lifecycle_manager',
-            node_name='lifecycle_manager_localization',
-            output='screen',
-            parameters=[{'use_sim_time': use_sim_time},
-                        {'autostart': autostart},
-                        {'node_names': ['map_server', 'amcl']}])
     ])

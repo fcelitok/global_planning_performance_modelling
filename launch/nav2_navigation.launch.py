@@ -15,10 +15,8 @@ def generate_launch_description():
 
     namespace = LaunchConfiguration('namespace')
     use_sim_time = LaunchConfiguration('use_sim_time')
-    autostart = LaunchConfiguration('autostart')
     params_file = LaunchConfiguration('params_file')
     bt_xml_file = LaunchConfiguration('bt_xml_file')
-    use_lifecycle_mgr = LaunchConfiguration('use_lifecycle_mgr')
     use_remappings = LaunchConfiguration('use_remappings')
 
     # TODO(orduno) Remove once `PushNodeRemapping` is resolved
@@ -32,7 +30,6 @@ def generate_launch_description():
     param_substitutions = {
         'use_sim_time': use_sim_time,
         'bt_xml_filename': bt_xml_file,
-        'autostart': autostart,
     }
 
     configured_params = RewrittenYaml(
@@ -43,7 +40,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         # Set env var to print messages to stdout immediately
-        SetEnvironmentVariable('RCUTILS_CONSOLE_STDOUT_LINE_BUFFERED', '1'),
+        # SetEnvironmentVariable('RCUTILS_CONSOLE_STDOUT_LINE_BUFFERED', '1'),
 
         DeclareLaunchArgument(
             'namespace', default_value='',
@@ -51,11 +48,7 @@ def generate_launch_description():
 
         DeclareLaunchArgument(
             'use_sim_time', default_value='false',
-            description='Use simulation (Gazebo) clock if true'),
-
-        DeclareLaunchArgument(
-            'autostart', default_value='true',
-            description='Automatically startup the nav2 stack'),
+            description='Use simulation/bag clock if true'),
 
         DeclareLaunchArgument(
             'params_file',
@@ -63,14 +56,8 @@ def generate_launch_description():
 
         DeclareLaunchArgument(
             'bt_xml_file',
-            default_value=os.path.join(
-                get_package_share_directory('nav2_bt_navigator'),
-                'behavior_trees', 'navigate_w_replanning_and_recovery.xml'),
+            default_value=os.path.join(get_package_share_directory('nav2_bt_navigator'), 'behavior_trees', 'navigate_w_replanning_and_recovery.xml'),
             description='Full path to the behavior tree xml file to use'),
-
-        DeclareLaunchArgument(
-            'use_lifecycle_mgr', default_value='true',
-            description='Whether to launch the lifecycle manager'),
 
         DeclareLaunchArgument(
             'use_remappings', default_value='false',
@@ -79,7 +66,7 @@ def generate_launch_description():
         Node(
             package='nav2_controller',
             node_executable='controller_server',
-            output='screen',
+            output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
             remappings=remappings),
@@ -88,7 +75,7 @@ def generate_launch_description():
             package='nav2_planner',
             node_executable='planner_server',
             node_name='planner_server',
-            output='screen',
+            output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
             remappings=remappings),
@@ -97,7 +84,7 @@ def generate_launch_description():
             package='nav2_recoveries',
             node_executable='recoveries_server',
             node_name='recoveries_server',
-            output='screen',
+            output='log',
             parameters=[{'use_sim_time': use_sim_time}],
             use_remappings=IfCondition(use_remappings),
             remappings=remappings),
@@ -106,7 +93,7 @@ def generate_launch_description():
             package='nav2_bt_navigator',
             node_executable='bt_navigator',
             node_name='bt_navigator',
-            output='screen',
+            output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
             remappings=remappings),
@@ -115,23 +102,9 @@ def generate_launch_description():
             package='nav2_waypoint_follower',
             node_executable='waypoint_follower',
             node_name='waypoint_follower',
-            output='screen',
+            output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
             remappings=remappings),
-
-        Node(
-            condition=IfCondition(use_lifecycle_mgr),
-            package='nav2_lifecycle_manager',
-            node_executable='lifecycle_manager',
-            node_name='lifecycle_manager_navigation',
-            output='screen',
-            parameters=[{'use_sim_time': use_sim_time},
-                        {'autostart': autostart},
-                        {'node_names': ['controller_server',
-                                        'planner_server',
-                                        'recoveries_server',
-                                        'bt_navigator',
-                                        'waypoint_follower']}]),
 
     ])
