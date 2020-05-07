@@ -166,6 +166,6 @@ class BenchmarkRun(object):
         # compute all relevant metrics and visualisations
         self.log(event="start_compute_metrics")
         compute_metrics(self.run_output_folder)
-        
+
         self.log(event="run_end")
         print_info(f"run {self.run_id} completed")
