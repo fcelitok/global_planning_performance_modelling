@@ -3,7 +3,6 @@ localization_benchmark_supervisor:
     run_timeout: 10000.0
     ps_snapshot_period: 10.0
     write_estimated_poses_period: 0.1
-    cmd_vel_topic: /cmd_vel
     scan_topic: /scan
     estimated_pose_correction_topic: /amcl_pose
     ground_truth_pose_topic: /ground_truth/base_footprint/odom

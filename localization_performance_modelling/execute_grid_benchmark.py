@@ -17,7 +17,7 @@ def main():
     parser.add_argument('-e', dest='environment_dataset_folder',
                         help='Dataset folder containg the stage environment.world file (recursively).',
                         type=str,
-                        default="~/ds/performance_modelling_few_datasets/turtlebot3_world",
+                        default="~/ds/performance_modelling_test_datasets/turtlebot3_world",
                         required=False)
 
     parser.add_argument('-c', dest='grid_benchmark_configuration',

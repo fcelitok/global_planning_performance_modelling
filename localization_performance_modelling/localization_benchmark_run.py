@@ -11,11 +11,7 @@ from os import path
 
 from performance_modelling_py.utils import backup_file_if_exists, print_info, print_error
 from performance_modelling_py.component_proxies.ros2_component import Component
-# from performance_modelling_py.metrics.localization_metrics import compute_localization_metrics
-# from performance_modelling_py.metrics.navigation_metrics import compute_navigation_metrics
-# from performance_modelling_py.metrics.map_metrics import compute_map_metrics
-# from performance_modelling_py.metrics.computation_metrics import compute_computation_metrics
-# from performance_modelling_py.visualisation.trajectory_visualisation import save_trajectories_plot
+from localization_performance_modelling.metrics import compute_metrics
 
 
 class BenchmarkRun(object):
@@ -167,23 +163,9 @@ class BenchmarkRun(object):
         environment.shutdown()
         print_info("execute_run: components shutdown completed")
 
-        # # compute all relevant metrics and visualisations
-        # self.log(event="start_compute_map_metrics")
-        # compute_map_metrics(self.run_output_folder, self.stage_world_folder)
-        #
-        # self.log(event="start_compute_localization_metrics")
-        # compute_localization_metrics(self.run_output_folder)
-        #
-        # self.log(event="start_compute_navigation_metrics")
-        # compute_navigation_metrics(self.run_output_folder)
-        #
-        # self.log(event="start_compute_computation_metrics")
-        # compute_computation_metrics(self.run_output_folder)
-        #
-        # print_info("execute_run: metrics computation completed")
-        #
-        # self.log(event="start_save_trajectories_plot")
-        # save_trajectories_plot(self.run_output_folder)
-        # print_info("execute_run: saved visualisation files")
-
+        # compute all relevant metrics and visualisations
+        self.log(event="start_compute_metrics")
+        compute_metrics(self.run_output_folder)
+        
         self.log(event="run_end")
+        print_info(f"run {self.run_id} completed")

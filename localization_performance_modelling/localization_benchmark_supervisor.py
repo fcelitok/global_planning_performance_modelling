@@ -4,8 +4,11 @@
 import time
 import traceback
 
+import geometry_msgs
 import lifecycle_msgs
+import nav_msgs
 import numpy as np
+import pandas as pd
 import pyquaternion
 import rclpy
 import yaml
@@ -39,12 +42,13 @@ def main(args=None):
     node = LocalizationBenchmarkSupervisor()
 
     node.start_run()
-    node.send_goal()
 
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         node.ros_shutdown_callback()
+    finally:
+        node.end_run()
 
 
 class LocalizationBenchmarkSupervisor(Node):
@@ -52,7 +56,6 @@ class LocalizationBenchmarkSupervisor(Node):
         super().__init__('localization_benchmark_supervisor', automatically_declare_parameters_from_overrides=True)
 
         # general parameters
-        cmd_vel_topic = self.get_parameter('cmd_vel_topic').value
         scan_topic = self.get_parameter('scan_topic').value
         ground_truth_pose_topic = self.get_parameter('ground_truth_pose_topic').value
         estimated_pose_correction_topic = self.get_parameter('estimated_pose_correction_topic').value
@@ -112,13 +115,17 @@ class LocalizationBenchmarkSupervisor(Node):
             os.makedirs(self.ps_output_folder)
 
         # file paths for benchmark data
-        self.estimated_poses_file_path = path.join(self.benchmark_data_folder, "estimated_poses")
-        self.estimated_correction_pose_file_path = path.join(self.benchmark_data_folder, "estimated_correction_poses_with_covariance")
-        self.ground_truth_poses_file_path = path.join(self.benchmark_data_folder, "ground_truth_poses")
-        self.cmd_vel_twists_file_path = path.join(self.benchmark_data_folder, "cmd_vel_twists")
-        self.scans_file_path = path.join(self.benchmark_data_folder, "scans")
+        self.estimated_poses_file_path = path.join(self.benchmark_data_folder, "estimated_poses.csv")
+        self.estimated_correction_poses_file_path = path.join(self.benchmark_data_folder, "estimated_correction_poses_with_covariance.csv")
+        self.ground_truth_poses_file_path = path.join(self.benchmark_data_folder, "ground_truth_poses.csv")
+        self.scans_file_path = path.join(self.benchmark_data_folder, "scans.csv")
         self.run_events_file_path = path.join(self.benchmark_data_folder, "run_events.csv")
         self.init_run_events_file()
+
+        # pandas dataframes for benchmark data
+        self.estimated_poses_df = pd.DataFrame(columns=['t', 'x', 'y', 'theta'])
+        self.estimated_correction_poses_df = pd.DataFrame(columns=['t', 'x', 'y', 'theta', 'cov_x_x', 'cov_x_y', 'cov_y_y', 'cov_theta_theta'])
+        self.ground_truth_poses_df = pd.DataFrame(columns=['t', 'x', 'y', 'theta', 'v_x', 'v_y', 'v_theta'])
 
         # setup timers
         self.create_timer(run_timeout, self.run_timeout_callback)
@@ -137,7 +144,6 @@ class LocalizationBenchmarkSupervisor(Node):
 
         # setup subscribers
         self.create_subscription(LaserScan, scan_topic, self.scan_callback, qos_profile_sensor_data)
-        self.create_subscription(Twist, cmd_vel_topic, self.cmd_vel_callback, 10)
         self.create_subscription(PoseWithCovarianceStamped, estimated_pose_correction_topic, self.estimated_pose_correction_callback, qos_profile_sensor_data)
         self.create_subscription(Odometry, ground_truth_pose_topic, self.ground_truth_pose_callback, qos_profile_sensor_data)
         self.localization_node_transition_event_subscriber = self.create_subscription(TransitionEvent, localization_node_transition_event_topic, self.localization_node_transition_event_callback, qos_profile_sensor_data)
@@ -196,6 +202,8 @@ class LocalizationBenchmarkSupervisor(Node):
 
         self.write_event(self.get_clock().now(), 'run_start')
 
+        self.send_goal()
+
     def send_goal(self):
         print_info('waiting for navigate_to_pose action server')
         if not self.navigate_to_pose_action_client.wait_for_server(timeout_sec=5.0):
@@ -232,10 +240,15 @@ class LocalizationBenchmarkSupervisor(Node):
         self.navigate_to_pose_action_goal_future.add_done_callback(self.goal_response_callback)
         self.write_event(self.get_clock().now(), 'target_pose_set')
 
-    def ros_shutdown_callback(self):  # TODO find a way to connect as shutdown callback
+    def ros_shutdown_callback(self):
         print_info("asked to shutdown, terminating run")
         self.write_event(self.get_clock().now(), 'ros_shutdown')
         self.write_event(self.get_clock().now(), 'supervisor_finished')
+
+    def end_run(self):
+        self.estimated_poses_df.to_csv(self.estimated_poses_file_path, index=False)
+        self.estimated_correction_poses_df.to_csv(self.estimated_correction_poses_file_path, index=False)
+        self.ground_truth_poses_df.to_csv(self.ground_truth_poses_file_path, index=False)
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
@@ -288,46 +301,48 @@ class LocalizationBenchmarkSupervisor(Node):
     def write_estimated_pose_timer_callback(self):
         try:
             transform_msg = self.tf_buffer.lookup_transform('map', 'base_link', Time())
-            position = transform_msg.transform.translation
             orientation = transform_msg.transform.rotation
             theta, _, _ = pyquaternion.Quaternion(x=orientation.x, y=orientation.y, z=orientation.z, w=orientation.w).yaw_pitch_roll
-            msg_time = nanoseconds_to_seconds(Time.from_msg(transform_msg.header.stamp).nanoseconds)
 
-            with open(self.estimated_poses_file_path, 'a') as estimated_poses_file:
-                estimated_poses_file.write(f"FLASER 0 0.0 0.0 0.0 {position.x} {position.y} {theta} {msg_time}\n")
+            self.estimated_poses_df = self.estimated_poses_df.append({
+                't': nanoseconds_to_seconds(Time.from_msg(transform_msg.header.stamp).nanoseconds),
+                'x': transform_msg.transform.translation.x,
+                'y': transform_msg.transform.translation.y,
+                'theta': theta
+            }, ignore_index=True)
 
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             pass
 
-    def estimated_pose_correction_callback(self, pose_with_covariance_msg: PoseWithCovarianceStamped):
-        position = pose_with_covariance_msg.pose.pose.position
+    def estimated_pose_correction_callback(self, pose_with_covariance_msg: geometry_msgs.msg.PoseWithCovarianceStamped):
         orientation = pose_with_covariance_msg.pose.pose.orientation
         theta, _, _ = pyquaternion.Quaternion(x=orientation.x, y=orientation.y, z=orientation.z, w=orientation.w).yaw_pitch_roll
         covariance_mat = np.array(pose_with_covariance_msg.pose.covariance).reshape(6, 6)
-        cov_x, cov_xy, cov_y, cov_theta = covariance_mat[0, 0], covariance_mat[0, 1], covariance_mat[1, 1], covariance_mat[5, 5]
-        msg_time = nanoseconds_to_seconds(Time.from_msg(pose_with_covariance_msg.header.stamp).nanoseconds)
 
-        with open(self.estimated_correction_pose_file_path, 'a') as estimated_correction_pose_file:
-            estimated_correction_pose_file.write(f"{msg_time}, {position.x}, {position.y}, {theta}, {cov_x}, {cov_xy}, {cov_y}, {cov_theta}\n")
+        self.estimated_correction_poses_df = self.estimated_correction_poses_df.append({
+            't': nanoseconds_to_seconds(Time.from_msg(pose_with_covariance_msg.header.stamp).nanoseconds),
+            'x': pose_with_covariance_msg.pose.pose.position.x,
+            'y': pose_with_covariance_msg.pose.pose.position.y,
+            'theta': theta,
+            'cov_x_x': covariance_mat[0, 0],
+            'cov_x_y': covariance_mat[0, 1],
+            'cov_y_y': covariance_mat[1, 1],
+            'cov_theta_theta': covariance_mat[5, 5]
+        }, ignore_index=True)
 
-    def ground_truth_pose_callback(self, odometry_msg):
-        position = odometry_msg.pose.pose.position
+    def ground_truth_pose_callback(self, odometry_msg: nav_msgs.msg.Odometry):
         orientation = odometry_msg.pose.pose.orientation
         theta, _, _ = pyquaternion.Quaternion(x=orientation.x, y=orientation.y, z=orientation.z, w=orientation.w).yaw_pitch_roll
-        msg_time = nanoseconds_to_seconds(Time.from_msg(odometry_msg.header.stamp).nanoseconds)
 
-        with open(self.ground_truth_poses_file_path, 'a') as ground_truth_poses_file:
-            ground_truth_poses_file.write("{t}, {x}, {y}, {theta}\n".format(t=msg_time,
-                                                                            x=position.x,
-                                                                            y=position.y,
-                                                                            theta=theta))
-
-    def cmd_vel_callback(self, twist_msg):
-        with open(self.cmd_vel_twists_file_path, 'a') as cmd_vel_twists_file:
-            cmd_vel_twists_file.write("{t}, {v_x}, {v_y}, {v_theta}\n".format(t=nanoseconds_to_seconds(self.get_clock().now().nanoseconds),
-                                                                              v_x=twist_msg.linear.x,
-                                                                              v_y=twist_msg.linear.y,
-                                                                              v_theta=twist_msg.angular.z))
+        self.ground_truth_poses_df = self.ground_truth_poses_df.append({
+            't': nanoseconds_to_seconds(Time.from_msg(odometry_msg.header.stamp).nanoseconds),
+            'x': odometry_msg.pose.pose.position.x,
+            'y': odometry_msg.pose.pose.position.y,
+            'theta': theta,
+            'v_x': odometry_msg.twist.twist.linear.x,
+            'v_y': odometry_msg.twist.twist.linear.y,
+            'v_theta': odometry_msg.twist.twist.angular.z,
+        }, ignore_index=True)
 
     def ps_snapshot_timer_callback(self):
         ps_snapshot_file_path = path.join(self.ps_output_folder, "ps_{i:08d}.pkl".format(i=self.ps_snapshot_count))
