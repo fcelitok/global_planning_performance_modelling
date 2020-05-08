@@ -1,6 +1,6 @@
 localization_benchmark_supervisor:
   ros__parameters:
-    run_timeout: 10000.0
+    run_timeout: 10800.0
     ps_snapshot_period: 10.0
     write_estimated_poses_period: 0.1
     scan_topic: /scan
