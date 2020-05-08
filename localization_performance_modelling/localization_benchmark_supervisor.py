@@ -86,8 +86,8 @@ class LocalizationBenchmarkSupervisor(Node):
         pose:
           pose:
             position:
-              x: -1.9485163688659668
-              y: -0.47899842262268066
+              x: 0.0
+              y: 0.0
               z: 0.0
             orientation:
               x: 0.0
@@ -96,6 +96,22 @@ class LocalizationBenchmarkSupervisor(Node):
               w: 0.99989987200819
           covariance: [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
         """)
+        # initial_pose_dict = yaml.load("""
+        # header:
+        #   frame_id: map
+        # pose:
+        #   pose:
+        #     position:
+        #       x: -1.9485163688659668
+        #       y: -0.47899842262268066
+        #       z: 0.0
+        #     orientation:
+        #       x: 0.0
+        #       y: 0.0
+        #       z: -0.014150828880505449
+        #       w: 0.99989987200819
+        #   covariance: [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
+        # """)
 
         self.initial_pose = PoseWithCovarianceStamped()
         self.initial_pose.header.frame_id = initial_pose_dict['header']['frame_id']
@@ -116,7 +132,7 @@ class LocalizationBenchmarkSupervisor(Node):
 
         # file paths for benchmark data
         self.estimated_poses_file_path = path.join(self.benchmark_data_folder, "estimated_poses.csv")
-        self.estimated_correction_poses_file_path = path.join(self.benchmark_data_folder, "estimated_correction_poses_with_covariance.csv")
+        self.estimated_correction_poses_file_path = path.join(self.benchmark_data_folder, "estimated_correction_poses.csv")
         self.ground_truth_poses_file_path = path.join(self.benchmark_data_folder, "ground_truth_poses.csv")
         self.scans_file_path = path.join(self.benchmark_data_folder, "scans.csv")
         self.run_events_file_path = path.join(self.benchmark_data_folder, "run_events.csv")
