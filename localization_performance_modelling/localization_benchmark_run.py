@@ -5,6 +5,8 @@ from __future__ import print_function
 
 import os
 import shutil
+import traceback
+
 import yaml
 import time
 from os import path
@@ -25,9 +27,9 @@ class BenchmarkRun(object):
 
         # environment parameters
         self.environment_folder = environment_folder
-        self.map_info_file_path = path.join(environment_folder, "map.yaml")
-        self.world_model_file = path.join(environment_folder, "gazebo_environment.model")
-        self.robot_urdf_file = path.join(environment_folder, "robot.urdf")
+        self.map_info_file_path = path.join(environment_folder, "data", "from_slam", "map.yaml")
+        self.world_model_file = path.join(environment_folder, "gazebo", "gazebo_environment.model")
+        self.robot_urdf_file = path.join(environment_folder, "gazebo", "robot.urdf")
 
         # run parameters
         self.run_id = run_id
@@ -164,8 +166,13 @@ class BenchmarkRun(object):
         print_info("execute_run: components shutdown completed")
 
         # compute all relevant metrics and visualisations
-        self.log(event="start_compute_metrics")
-        compute_metrics(self.run_output_folder)
+        # noinspection PyBroadException
+        try:
+            self.log(event="start_compute_metrics")
+            compute_metrics(self.run_output_folder)
+        except:
+            print_error("failed metrics computation")
+            print_error(traceback.format_exc())
 
         self.log(event="run_end")
         print_info(f"run {self.run_id} completed")
