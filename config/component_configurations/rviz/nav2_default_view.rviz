@@ -6,13 +6,9 @@ Panels:
       Expanded:
         - /TF1/Frames1
         - /TF1/Tree1
-        - /LaserScan1
-        - /Amcl Particle Swarm1
-        - /Global Planner1
-        - /Controller1
         - /Odometry1/Shape1
       Splitter Ratio: 0.6441176533699036
-    Tree Height: 551
+    Tree Height: 246
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -99,9 +95,9 @@ Visualization Manager:
         imu_link:
           Value: false
         map:
-          Value: false
+          Value: true
         odom:
-          Value: false
+          Value: true
         wheel_left_link:
           Value: false
         wheel_right_link:
@@ -447,7 +443,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.5507954359054565
+      Angle: 0
       Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -457,11 +453,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 170.93003845214844
+      Scale: 74.7009048461914
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz_default_plugins)
-      X: -0.5965225100517273
-      Y: -0.5098092555999756
+      X: 0
+      Y: 0
     Saved:
       - Angle: -1.5707963705062866
         Class: rviz_default_plugins/TopDownOrtho
@@ -478,6 +474,21 @@ Visualization Manager:
         Value: TopDownOrtho (rviz_default_plugins)
         X: -0.032615214586257935
         Y: -0.0801941454410553
+      - Angle: 0
+        Class: rviz_default_plugins/TopDownOrtho
+        Enable Stereo Rendering:
+          Stereo Eye Separation: 0.05999999865889549
+          Stereo Focal Distance: 1
+          Swap Stereo Eyes: false
+          Value: false
+        Invert Z Axis: false
+        Name: TopDownOrtho
+        Near Clip Distance: 0.009999999776482582
+        Scale: 44.555728912353516
+        Target Frame: <Fixed Frame>
+        Value: TopDownOrtho (rviz_default_plugins)
+        X: -0.9250669479370117
+        Y: 1.5283217430114746
 Window Geometry:
   Displays:
     collapsed: true

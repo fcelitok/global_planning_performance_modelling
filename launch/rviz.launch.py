@@ -37,7 +37,8 @@ def generate_launch_description():
         node_executable='rviz2',
         node_name='rviz2',
         arguments=['-d', LaunchConfiguration('rviz_config_file')],
-        output='screen',
+        output='log',
+
         use_remappings=IfCondition(LaunchConfiguration('use_remappings')),
         remappings=[('/tf', 'tf'),
                     ('/tf_static', 'tf_static'),

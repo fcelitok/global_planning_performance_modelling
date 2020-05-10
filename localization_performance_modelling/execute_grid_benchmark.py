@@ -14,8 +14,8 @@ from performance_modelling_py.benchmark_execution.grid_benchmarking import execu
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description='Execute the benchmark')
 
-    parser.add_argument('-e', dest='environment_dataset_folder',
-                        help='Dataset folder containg the stage environment.world file (recursively).',
+    parser.add_argument('-e', dest='environment_dataset_folders',
+                        help='Dataset folders containg the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
                         type=str,
                         default="~/ds/performance_modelling_test_datasets/turtlebot3_world",
                         required=False)
@@ -50,12 +50,11 @@ def main():
 
     args = parser.parse_args()
     base_run_folder = path.expanduser(args.base_run_folder)
-    environment_dataset_folder = path.expanduser(args.environment_dataset_folder)
+
+    environment_folders = sorted(filter(path.isdir, glob.glob(path.expanduser(args.environment_dataset_folders), recursive=True)))
 
     grid_benchmark_configuration = path.join("/home/enrico/w/ros2_ws/src/localization_performance_modelling/config", "benchmark_configurations", args.grid_benchmark_configuration)
     components_configurations_folder = path.join("/home/enrico/w/ros2_ws/src/localization_performance_modelling/config", "component_configurations")
-
-    environment_folders = sorted(map(path.dirname, set(glob.glob(path.join(path.abspath(path.expanduser(environment_dataset_folder)), "**/*.yaml"))).union(set(glob.glob(path.join(path.abspath(path.expanduser(environment_dataset_folder)), "*.yaml"))))))
 
     execute_grid_benchmark(benchmark_run_object=BenchmarkRun,
                            grid_benchmark_configuration=grid_benchmark_configuration,

@@ -3,6 +3,7 @@
 
 import time
 import traceback
+from typing import List
 
 import geometry_msgs
 import lifecycle_msgs
@@ -13,10 +14,15 @@ import pyquaternion
 import rclpy
 import yaml
 from action_msgs.msg import GoalStatus
+from gazebo_msgs.msg import EntityState
+from gazebo_msgs.srv import SetEntityState
 from lifecycle_msgs.msg import TransitionEvent
 from nav2_msgs.action import NavigateToPose
 from nav2_msgs.srv import ManageLifecycleNodes
 from nav_msgs.msg import Odometry
+from performance_modelling_py.environment import gridmap_utils
+from rcl_interfaces.msg import ParameterValue
+from rcl_interfaces.srv import GetParameters
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
@@ -33,95 +39,80 @@ import psutil
 import os
 from os import path
 
-from performance_modelling_py.utils import backup_file_if_exists, print_info, print_error, nanoseconds_to_seconds
+from performance_modelling_py.utils import backup_file_if_exists, print_info, print_error, nanoseconds_to_seconds, print_fatal
+from std_srvs.srv import Empty
+
+
+class RunFailException(Exception):
+    pass
 
 
 def main(args=None):
     rclpy.init(args=args)
 
-    node = LocalizationBenchmarkSupervisor()
+    node = None
 
-    node.start_run()
-
+    # noinspection PyBroadException
     try:
+        node = LocalizationBenchmarkSupervisor()
+        node.start_run()
         rclpy.spin(node)
+
     except KeyboardInterrupt:
         node.ros_shutdown_callback()
+    except RunFailException as e:
+        print_error(e)
+    except Exception:
+        print_error(traceback.format_exc())
+
     finally:
-        node.end_run()
+        if node is not None:
+            node.end_run()
 
 
 class LocalizationBenchmarkSupervisor(Node):
     def __init__(self):
         super().__init__('localization_benchmark_supervisor', automatically_declare_parameters_from_overrides=True)
 
-        # general parameters
+        # topics, services, actions, entities and frames names
         scan_topic = self.get_parameter('scan_topic').value
         ground_truth_pose_topic = self.get_parameter('ground_truth_pose_topic').value
         estimated_pose_correction_topic = self.get_parameter('estimated_pose_correction_topic').value
         initial_pose_topic = self.get_parameter('initial_pose_topic').value
         localization_node_transition_event_topic = self.get_parameter('localization_node_transition_event_topic').value
         lifecycle_manager_service = self.get_parameter('lifecycle_manager_service').value
-        navigate_to_pose_action_name = self.get_parameter('navigate_to_pose_action_name').value
+        global_costmap_get_parameters_service = self.get_parameter('global_costmap_get_parameters_service').value
+        pause_physics_service = self.get_parameter('pause_physics_service').value
+        unpause_physics_service = self.get_parameter('unpause_physics_service').value
+        set_entity_state_service = self.get_parameter('set_entity_state_service').value
+        navigate_to_pose_action = self.get_parameter('navigate_to_pose_action').value
+        self.fixed_frame = self.get_parameter('fixed_frame').value
+        self.robot_entity_name = self.get_parameter('robot_entity_name').value
+
+        # run parameters
         run_timeout = self.get_parameter('run_timeout').value
         ps_snapshot_period = self.get_parameter('ps_snapshot_period').value
         write_estimated_poses_period = self.get_parameter('write_estimated_poses_period').value
-
-        # run parameters
         self.run_output_folder = self.get_parameter('run_output_folder').value
-        self.ps_pid_father = self.get_parameter('pid_father').value
         self.benchmark_data_folder = path.join(self.run_output_folder, "benchmark_data")
+        self.ground_truth_map_path = self.get_parameter("ground_truth_map_path").value
+        self.ground_truth_map_info_path = self.get_parameter("ground_truth_map_info_path").value
+        self.ps_pid_father = self.get_parameter('pid_father').value
         self.ps_output_folder = path.join(self.benchmark_data_folder, "ps_snapshots")
+        self.ps_processes = psutil.Process(self.ps_pid_father).children(recursive=True)  # list of processes children of the benchmark script, i.e., all ros nodes of the benchmark including this one
+        self.ground_truth_map = gridmap_utils.GroundTruthMap(self.ground_truth_map_path, self.ground_truth_map_info_path)
+        self.initial_pose_covariance_matrix = np.zeros((6, 6), dtype=float)
+        self.initial_pose_covariance_matrix[0, 0] = 0.25
+        self.initial_pose_covariance_matrix[1, 1] = 0.25
+        self.initial_pose_covariance_matrix[5, 5] = 0.0685
 
         # run variables
         self.terminate = False
         self.ps_snapshot_count = 0
-        self.ps_processes = psutil.Process(self.ps_pid_father).children(recursive=True)  # list of processes children of the benchmark script, i.e., all ros nodes of the benchmark including this one
         self.received_first_scan = False
         self.localization_node_activated = False
-
-        initial_pose_dict = yaml.load("""
-        header:
-          frame_id: map
-        pose:
-          pose:
-            position:
-              x: 0.0
-              y: 0.0
-              z: 0.0
-            orientation:
-              x: 0.0
-              y: 0.0
-              z: -0.014150828880505449
-              w: 0.99989987200819
-          covariance: [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
-        """)
-        # initial_pose_dict = yaml.load("""
-        # header:
-        #   frame_id: map
-        # pose:
-        #   pose:
-        #     position:
-        #       x: -1.9485163688659668
-        #       y: -0.47899842262268066
-        #       z: 0.0
-        #     orientation:
-        #       x: 0.0
-        #       y: 0.0
-        #       z: -0.014150828880505449
-        #       w: 0.99989987200819
-        #   covariance: [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
-        # """)
-
-        self.initial_pose = PoseWithCovarianceStamped()
-        self.initial_pose.header.frame_id = initial_pose_dict['header']['frame_id']
-        self.initial_pose.pose.pose.position.x = initial_pose_dict['pose']['pose']['position']['x']
-        self.initial_pose.pose.pose.position.y = initial_pose_dict['pose']['pose']['position']['y']
-        self.initial_pose.pose.pose.position.z = initial_pose_dict['pose']['pose']['position']['z']
-        self.initial_pose.pose.pose.orientation.x = initial_pose_dict['pose']['pose']['orientation']['x']
-        self.initial_pose.pose.pose.orientation.y = initial_pose_dict['pose']['pose']['orientation']['y']
-        self.initial_pose.pose.pose.orientation.z = initial_pose_dict['pose']['pose']['orientation']['z']
-        self.initial_pose.pose.covariance = initial_pose_dict['pose']['covariance']
+        self.robot_radius = None
+        self.initial_pose = None
 
         # prepare folder structure
         if not path.exists(self.benchmark_data_folder):
@@ -150,6 +141,10 @@ class LocalizationBenchmarkSupervisor(Node):
 
         # setup service clients
         self.lifecycle_manager_service_client = self.create_client(ManageLifecycleNodes, lifecycle_manager_service)
+        self.global_costmap_get_parameters_service_client = self.create_client(GetParameters, global_costmap_get_parameters_service)
+        self.pause_physics_service_client = self.create_client(Empty, pause_physics_service)
+        self.unpause_physics_service_client = self.create_client(Empty, unpause_physics_service)
+        self.set_entity_state_service_client = self.create_client(SetEntityState, set_entity_state_service)
 
         # setup buffers
         self.tf_buffer = tf2_ros.Buffer()
@@ -165,13 +160,12 @@ class LocalizationBenchmarkSupervisor(Node):
         self.localization_node_transition_event_subscriber = self.create_subscription(TransitionEvent, localization_node_transition_event_topic, self.localization_node_transition_event_callback, qos_profile_sensor_data)
 
         # setup action clients
-        self.navigate_to_pose_action_client = ActionClient(self, NavigateToPose, navigate_to_pose_action_name)
+        self.navigate_to_pose_action_client = ActionClient(self, NavigateToPose, navigate_to_pose_action)
         self.navigate_to_pose_action_goal_future = None
         self.navigate_to_pose_action_result_future = None
 
     def start_run(self):
         print_info("starting run")
-
         # wait to receive sensor data from the environment (e.g., a simulator may need time to startup)
         waiting_time = 0.0
         waiting_period = 0.5
@@ -182,6 +176,33 @@ class LocalizationBenchmarkSupervisor(Node):
             if waiting_time > 5.0:
                 self.get_logger().warning('still waiting to receive first sensor message from environment')
                 waiting_time = 0.0
+
+        # get the parameter robot_radius from the global costmap
+        parameters_request = GetParameters.Request(names=['robot_radius'])
+        parameters_response = self.call_service(self.global_costmap_get_parameters_service_client, parameters_request)
+        self.robot_radius = parameters_response.values[0].double_value
+        print_info("got robot radius")
+
+        # sample the initial pose, and set the position of the robot in the simulator
+        self.sample_initial_pose()
+        print_info("sampled initial_pose")
+
+        # set the position of the robot in the simulator
+        self.call_service(self.pause_physics_service_client, Empty.Request())
+        print_info("called pause_physics_service")
+
+        time.sleep(10.0)
+        robot_entity_state = EntityState(
+            name=self.robot_entity_name,
+            pose=self.initial_pose.pose.pose
+        )
+        print_info(robot_entity_state)
+        set_entity_state_response = self.call_service(self.set_entity_state_service_client, SetEntityState.Request(state=robot_entity_state))
+        print_info("called set_entity_state_service", set_entity_state_response)
+
+        time.sleep(10.0)
+        self.call_service(self.unpause_physics_service_client, Empty.Request())
+        print_info("called unpause_physics_service")
 
         # ask lifecycle_manager to startup all its managed nodes
         while not self.lifecycle_manager_service_client.wait_for_service(timeout_sec=5.0) and rclpy.ok():
@@ -198,34 +219,76 @@ class LocalizationBenchmarkSupervisor(Node):
             # send the initial pose as soon as the localization node is active
             if self.localization_node_activated and not initial_pose_sent:
                 initial_pose_sent = True
-                self.initial_pose.header.stamp = self.get_clock().now().to_msg()
                 self.initial_pose_publisher.publish(self.initial_pose)
 
         # complete the service request
         try:
-            response: ManageLifecycleNodes.Response = srv_future.result()
+            parameters_response: ManageLifecycleNodes.Response = srv_future.result()
         except Exception as e:
             self.get_logger().fatal('Service call failed %r' % (e,))
             self.write_event(self.get_clock().now(), 'failed_to_startup_nodes')
-            rclpy.shutdown()
-            return
+            raise RunFailException()
         else:
-            if not response.success:
+            if not parameters_response.success:
                 self.get_logger().fatal('Service lifecycle manager could not startup nodes')
                 self.write_event(self.get_clock().now(), 'failed_to_startup_nodes')
-                rclpy.shutdown()
-                return
+                raise RunFailException()
 
         self.write_event(self.get_clock().now(), 'run_start')
 
-        self.send_goal()
+        # self.send_goal()
+        while rclpy.ok():
+
+            time.sleep(5.0)
+            # sample the initial pose, and set the position of the robot in the simulator
+            self.sample_initial_pose()
+            print_info("sampled initial_pose")
+
+            # set the position of the robot in the simulator
+            self.call_service(self.pause_physics_service_client, Empty.Request())
+            print_info("called pause_physics_service")
+
+            # time.sleep(5.0)
+            robot_entity_state = EntityState(
+                name=self.robot_entity_name,
+                pose=self.initial_pose.pose.pose
+            )
+            print_info(robot_entity_state)
+            set_entity_state_response = self.call_service(self.set_entity_state_service_client, SetEntityState.Request(state=robot_entity_state))
+            print_info("called set_entity_state_service", set_entity_state_response)
+
+            # time.sleep(5.0)
+            self.call_service(self.unpause_physics_service_client, Empty.Request())
+            print_info("called unpause_physics_service")
+
+            self.initial_pose_publisher.publish(self.initial_pose)
+
+    def sample_initial_pose(self):
+        try:
+            x, y, theta = self.ground_truth_map.sample_robot_pose_from_free_cells(3 * self.robot_radius)
+            q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=theta)
+        except gridmap_utils.NotFoundException as e:
+            print_error("could not sample initial pose:", e)
+            self.write_event(self.get_clock().now(), 'failed_to_sample_initial_pose')
+            raise RunFailException("could not sample initial pose")
+
+        self.initial_pose = PoseWithCovarianceStamped()
+        self.initial_pose.header.frame_id = self.fixed_frame
+        self.initial_pose.header.stamp = self.get_clock().now().to_msg()
+        self.initial_pose.pose.pose.position.x = x
+        self.initial_pose.pose.pose.position.y = y
+        self.initial_pose.pose.pose.orientation.w = q.w
+        self.initial_pose.pose.pose.orientation.x = q.x
+        self.initial_pose.pose.pose.orientation.y = q.y
+        self.initial_pose.pose.pose.orientation.z = q.z
+        self.initial_pose.pose.covariance = list(self.initial_pose_covariance_matrix.flat)
 
     def send_goal(self):
         print_info('waiting for navigate_to_pose action server')
         if not self.navigate_to_pose_action_client.wait_for_server(timeout_sec=5.0):
             print_error("navigate_to_pose action server not available")
-            self.write_event(self.get_clock().now(), 'failed_to_navigate')
-            return  # TODO fail run or try again?
+            self.write_event(self.get_clock().now(), 'failed_to_communicate_with_navigation_node')
+            raise Exception("could not sample initial pose")
 
         target_pose_dict = yaml.load("""
         header:
@@ -257,11 +320,18 @@ class LocalizationBenchmarkSupervisor(Node):
         self.write_event(self.get_clock().now(), 'target_pose_set')
 
     def ros_shutdown_callback(self):
+        """
+        This function is called when the node receives an interrupt signal (KeyboardInterrupt).
+        """
         print_info("asked to shutdown, terminating run")
         self.write_event(self.get_clock().now(), 'ros_shutdown')
         self.write_event(self.get_clock().now(), 'supervisor_finished')
 
     def end_run(self):
+        """
+        This function is called after the run has completed, whether the run finished correctly, or there was an exception.
+        The only case in which this function is not called is if an exception was raised from LocalizationBenchmarkSupervisor.__init__
+        """
         self.estimated_poses_df.to_csv(self.estimated_poses_file_path, index=False)
         self.estimated_correction_poses_df.to_csv(self.estimated_correction_poses_file_path, index=False)
         self.ground_truth_poses_df.to_csv(self.ground_truth_poses_file_path, index=False)
@@ -403,3 +473,16 @@ class LocalizationBenchmarkSupervisor(Node):
         except IOError as e:
             self.get_logger().error("slam_benchmark_supervisor.write_event: could not write event to run_events_file: {t} {event}".format(t=nanoseconds_to_seconds(stamp.nanoseconds), event=str(event)))
             self.get_logger().error(e)
+
+    def call_service(self, service_client, request, fail_timeout=30.0, warning_timeout=5.0):
+        time_waited = 0.0
+        while not service_client.wait_for_service(timeout_sec=warning_timeout) and rclpy.ok():
+            self.get_logger().warning(f'supervisor: still waiting {service_client.srv_name} to become available')
+            time_waited += warning_timeout
+            if time_waited >= fail_timeout:
+                self.get_logger().error(f'supervisor: {service_client.srv_name} not available')
+                raise RunFailException(f"{service_client.srv_name} was not available")
+
+        srv_future = service_client.call_async(request)
+        rclpy.spin_until_future_complete(self, srv_future)
+        return srv_future.result()
