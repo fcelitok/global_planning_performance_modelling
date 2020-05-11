@@ -2,6 +2,8 @@ localization_benchmark_supervisor:
   ros__parameters:
 
     # run parameters
+    num_goals: 10
+    max_rejected_goals: 10
     run_timeout: 10800.0
     ps_snapshot_period: 10.0
     write_estimated_poses_period: 0.1

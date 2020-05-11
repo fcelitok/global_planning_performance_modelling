@@ -27,11 +27,9 @@ class BenchmarkRun(object):
 
         # environment parameters
         self.environment_folder = environment_folder
-        self.map_info_file_path = path.join(environment_folder, "data", "from_slam", "map.yaml")
+        self.map_info_file_path = path.join(environment_folder, "data", "map.yaml")
         self.world_model_file = path.join(environment_folder, "gazebo", "gazebo_environment.model")
         self.robot_urdf_file = path.join(environment_folder, "gazebo", "robot.urdf")
-        ground_truth_map_path = path.join(environment_folder, "data", "map_ground_truth.pgm")
-        ground_truth_map_info_path = path.join(environment_folder, "data", "map_info.yaml")
 
         # run parameters
         self.run_id = run_id
@@ -73,8 +71,7 @@ class BenchmarkRun(object):
         supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['run_output_folder'] = self.run_output_folder
         supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['pid_father'] = os.getpid()
         supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['use_sim_time'] = self.use_sim_time
-        supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['ground_truth_map_path'] = ground_truth_map_path
-        supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['ground_truth_map_info_path'] = ground_truth_map_info_path
+        supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['ground_truth_map_info_path'] = self.map_info_file_path
         with open(self.supervisor_configuration_copy_absolute_path, 'w') as supervisor_configuration_file:
             yaml.dump(supervisor_configuration, supervisor_configuration_file, default_flow_style=False)
 
