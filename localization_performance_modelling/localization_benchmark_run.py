@@ -29,7 +29,8 @@ class BenchmarkRun(object):
         self.environment_folder = environment_folder
         self.map_info_file_path = path.join(environment_folder, "data", "map.yaml")
         self.world_model_file = path.join(environment_folder, "gazebo", "gazebo_environment.model")
-        self.robot_urdf_file = path.join(environment_folder, "gazebo", "robot.urdf")
+        self.robot_gt_urdf_file = path.join(environment_folder, "gazebo", "robot_gt.urdf")
+        self.robot_realistic_urdf_file = path.join(environment_folder, "gazebo", "robot_realistic.urdf")
 
         # run parameters
         self.run_id = run_id
@@ -115,7 +116,8 @@ class BenchmarkRun(object):
         }
         environment_params = {
             'world_model_file': self.world_model_file,
-            'robot_urdf_file': self.robot_urdf_file,
+            'robot_gt_urdf_file': self.robot_gt_urdf_file,
+            'robot_realistic_urdf_file': self.robot_realistic_urdf_file,
             'headless': self.headless,
         }
         localization_params = {

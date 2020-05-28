@@ -102,18 +102,21 @@ class LocalizationBenchmarkSupervisor(Node):
         self.ps_processes = psutil.Process(self.ps_pid_father).children(recursive=True)  # list of processes children of the benchmark script, i.e., all ros nodes of the benchmark including this one
         self.ground_truth_map = ground_truth_map_utils.GroundTruthMap(self.ground_truth_map_info_path)
         self.initial_pose_covariance_matrix = np.zeros((6, 6), dtype=float)
-        self.initial_pose_covariance_matrix[0, 0] = 0.25
-        self.initial_pose_covariance_matrix[1, 1] = 0.25
-        self.initial_pose_covariance_matrix[5, 5] = 0.0685
+        self.initial_pose_covariance_matrix[0, 0] = self.get_parameter('initial_covariance_xy').value
+        self.initial_pose_covariance_matrix[1, 1] = self.get_parameter('initial_covariance_xy').value
+        self.initial_pose_covariance_matrix[5, 5] = self.get_parameter('initial_covariance_theta').value
+        self.goal_tolerance = self.get_parameter('goal_tolerance').value
 
         # run variables
         self.terminate = False
         self.ps_snapshot_count = 0
         self.received_first_scan = False
+        self.latest_ground_truth_pose_msg = None
         self.localization_node_activated = False
         self.robot_radius = None
         self.initial_pose = None
-        self.goal_accepted_count = 0
+        self.current_goal = None
+        self.goal_succeeded_count = 0
         self.goal_failed_count = 0
         self.goal_rejected_count = 0
 
@@ -199,7 +202,6 @@ class LocalizationBenchmarkSupervisor(Node):
             name=self.robot_entity_name,
             pose=self.initial_pose.pose.pose
         )
-        print_info(robot_entity_state)
         set_entity_state_response = self.call_service(self.set_entity_state_service_client, SetEntityState.Request(state=robot_entity_state))
         print_info("called set_entity_state_service", set_entity_state_response)
         time.sleep(1.0)
@@ -216,61 +218,9 @@ class LocalizationBenchmarkSupervisor(Node):
             self.write_event(self.get_clock().now(), 'failed_to_startup_nodes')
             raise RunFailException("lifecycle manager could not startup nodes")
 
-        # while not self.lifecycle_manager_service_client.wait_for_service(timeout_sec=5.0) and rclpy.ok():
-        #     self.get_logger().warning('supervisor: still waiting lifecycle_manager_service to become available')
-        #
-        # # the future will complete after the localization node has received the initial pose
-        # initial_pose_sent = False
-        # startup_request = ManageLifecycleNodes.Request(command=ManageLifecycleNodes.Request.STARTUP)
-        # srv_future = self.lifecycle_manager_service_client.call_async(startup_request)
-        # while not srv_future.done() and rclpy.ok():
-        #     rclpy.spin_once(self)
-        #
-        # # complete the service request
-        # try:
-        #     parameters_response: ManageLifecycleNodes.Response = srv_future.result()
-        # except Exception as e:
-        #     self.get_logger().fatal('Service call failed %r' % (e,))
-        #     self.write_event(self.get_clock().now(), 'failed_to_startup_nodes')
-        #     raise RunFailException()
-        # else:
-        #     if not parameters_response.success:
-        #         self.get_logger().fatal('Service lifecycle manager could not startup nodes')
-        #         self.write_event(self.get_clock().now(), 'failed_to_startup_nodes')
-        #         raise RunFailException()
-
         self.write_event(self.get_clock().now(), 'run_start')
 
         self.send_goal()
-
-        # while rclpy.ok():
-        #
-        #     time.sleep(30.0)
-        #     # sample the initial pose, and set the position of the robot in the simulator
-        #     self.sample_initial_pose()
-        #     print_info("sampled initial_pose")
-        #
-        #     # set the position of the robot in the simulator
-        #     print_info("call pause_physics_service")
-        #     self.call_service(self.pause_physics_service_client, Empty.Request())
-        #     print_info("return call pause_physics_service")
-        #
-        #     # time.sleep(5.0)
-        #     robot_entity_state = EntityState(
-        #         name=self.robot_entity_name,
-        #         pose=self.initial_pose.pose.pose
-        #     )
-        #     print(robot_entity_state)
-        #     print_info("call set_entity_state_service")
-        #     set_entity_state_response = self.call_service(self.set_entity_state_service_client, SetEntityState.Request(state=robot_entity_state))
-        #     print_info("return call set_entity_state_service", set_entity_state_response)
-        #
-        #     # time.sleep(5.0)
-        #     print_info("call unpause_physics_service")
-        #     self.call_service(self.unpause_physics_service_client, Empty.Request())
-        #     print_info("return call unpause_physics_service")
-        #
-        #     self.initial_pose_publisher.publish(self.initial_pose)
 
     def sample_initial_pose(self):
         try:
@@ -320,6 +270,7 @@ class LocalizationBenchmarkSupervisor(Node):
         self.navigate_to_pose_action_goal_future = self.navigate_to_pose_action_client.send_goal_async(goal_msg)
         self.navigate_to_pose_action_goal_future.add_done_callback(self.goal_response_callback)
         self.write_event(self.get_clock().now(), 'target_pose_set')
+        self.current_goal = goal_msg
 
     def ros_shutdown_callback(self):
         """
@@ -346,10 +297,10 @@ class LocalizationBenchmarkSupervisor(Node):
             print_error('navigation action goal rejected')
             self.write_event(self.get_clock().now(), 'target_pose_rejected')
             self.goal_rejected_count += 1
+            self.current_goal = None
             self.send_goal()
             return
 
-        print_info('navigate action goal accepted')
         self.write_event(self.get_clock().now(), 'target_pose_accepted')
 
         self.navigate_to_pose_action_result_future = goal_handle.get_result_async()
@@ -357,17 +308,27 @@ class LocalizationBenchmarkSupervisor(Node):
 
     def get_result_callback(self, future):
         status = future.result().status
+
         if status == GoalStatus.STATUS_SUCCEEDED:
-            print_info('navigation action finished')
-            self.write_event(self.get_clock().now(), 'target_pose_reached')
-            self.goal_accepted_count += 1
+            goal_position = self.current_goal.pose.pose.position
+            current_position = self.latest_ground_truth_pose_msg.pose.pose.position
+            distance_from_goal = np.sqrt((goal_position.x - current_position.x) ** 2 + (goal_position.y - current_position.y) ** 2)
+            if distance_from_goal < self.goal_tolerance:
+                self.write_event(self.get_clock().now(), 'target_pose_reached')
+                self.goal_succeeded_count += 1
+            else:
+                print_error("goal status succeeded but current position farther from goal position than tolerance")
+                self.write_event(self.get_clock().now(), 'target_pose_not_reached')
+                self.goal_failed_count += 1
         else:
             print_info('navigation action failed with status {}'.format(status))
             self.write_event(self.get_clock().now(), 'target_pose_not_reached')
             self.goal_failed_count += 1
 
+        self.current_goal = None
+
         # if all goals have been sent or the maximum number of rejected goals has been reached, end the run, otherwise send the next goal
-        if self.goal_accepted_count + self.goal_failed_count >= self.num_goals or self.goal_rejected_count > self.max_rejected_goals:
+        if self.goal_succeeded_count + self.goal_failed_count >= self.num_goals or self.goal_rejected_count > self.max_rejected_goals:
             self.write_event(self.get_clock().now(), 'run_completed')
             rclpy.shutdown()
         else:
@@ -376,11 +337,15 @@ class LocalizationBenchmarkSupervisor(Node):
     def localization_node_transition_event_callback(self, transition_event_msg: lifecycle_msgs.msg.TransitionEvent):
         # send the initial pose as soon as the localization node activates the first time
         if transition_event_msg.goal_state.label == 'active' and not self.localization_node_activated:
+            if self.initial_pose is None:
+                print_error("initial_pose is still None")
+                return
+
             self.localization_node_activated = True
             self.initial_pose_publisher.publish(self.initial_pose)
 
     def run_timeout_callback(self):
-        print_info("slam_benchmark_supervisor: terminating supervisor due to timeout, terminating run")
+        print_error("terminating supervisor due to timeout, terminating run")
         self.write_event(self.get_clock().now(), 'run_timeout')
         self.write_event(self.get_clock().now(), 'supervisor_finished')
         rclpy.shutdown()
@@ -431,6 +396,7 @@ class LocalizationBenchmarkSupervisor(Node):
         }, ignore_index=True)
 
     def ground_truth_pose_callback(self, odometry_msg: nav_msgs.msg.Odometry):
+        self.latest_ground_truth_pose_msg = odometry_msg
         orientation = odometry_msg.pose.pose.orientation
         theta, _, _ = pyquaternion.Quaternion(x=orientation.x, y=orientation.y, z=orientation.z, w=orientation.w).yaw_pitch_roll
 
@@ -480,7 +446,7 @@ class LocalizationBenchmarkSupervisor(Node):
             self.get_logger().error(e)
 
     def write_event(self, stamp, event):
-        print_info("slam_benchmark_supervisor: t: {t}, event: {event}".format(t=nanoseconds_to_seconds(stamp.nanoseconds), event=str(event)))
+        print_info("t: {t}, event: {event}".format(t=nanoseconds_to_seconds(stamp.nanoseconds), event=str(event)))
         try:
             with open(self.run_events_file_path, 'a') as run_events_file:
                 run_events_file.write("{t}, {event}\n".format(t=nanoseconds_to_seconds(stamp.nanoseconds), event=str(event)))

@@ -4,6 +4,9 @@ localization_benchmark_supervisor:
     # run parameters
     num_goals: 10
     max_rejected_goals: 10
+    initial_covariance_xy: 0.1
+    initial_covariance_theta: 0.0685
+    goal_tolerance: 0.4
     run_timeout: 10800.0
     ps_snapshot_period: 10.0
     write_estimated_poses_period: 0.1
