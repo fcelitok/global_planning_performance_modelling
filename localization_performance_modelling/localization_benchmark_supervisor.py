@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import random
 import time
 import traceback
+from collections import defaultdict, deque
 
 import geometry_msgs
 import lifecycle_msgs
 import nav_msgs
+import networkx as nx
 import numpy as np
 import pandas as pd
 import pyquaternion
@@ -17,13 +19,13 @@ from gazebo_msgs.srv import SetEntityState
 from lifecycle_msgs.msg import TransitionEvent
 from nav2_msgs.action import NavigateToPose
 from nav2_msgs.srv import ManageLifecycleNodes
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 from performance_modelling_py.environment import ground_truth_map_utils
 from rcl_interfaces.srv import GetParameters
 from rclpy.action import ActionClient
 from rclpy.node import Node
-from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
-from rclpy.qos import qos_profile_sensor_data
+from geometry_msgs.msg import Twist, PoseWithCovarianceStamped, Pose, Quaternion, PoseStamped
+from rclpy.qos import qos_profile_sensor_data, QoSDurabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
 
@@ -93,8 +95,6 @@ class LocalizationBenchmarkSupervisor(Node):
         self.ground_truth_map_info_path = self.get_parameter("ground_truth_map_info_path").value
 
         # run parameters
-        self.num_goals = self.get_parameter('num_goals').value
-        self.max_rejected_goals = self.get_parameter('max_rejected_goals').value
         run_timeout = self.get_parameter('run_timeout').value
         ps_snapshot_period = self.get_parameter('ps_snapshot_period').value
         write_estimated_poses_period = self.get_parameter('write_estimated_poses_period').value
@@ -102,9 +102,9 @@ class LocalizationBenchmarkSupervisor(Node):
         self.ps_processes = psutil.Process(self.ps_pid_father).children(recursive=True)  # list of processes children of the benchmark script, i.e., all ros nodes of the benchmark including this one
         self.ground_truth_map = ground_truth_map_utils.GroundTruthMap(self.ground_truth_map_info_path)
         self.initial_pose_covariance_matrix = np.zeros((6, 6), dtype=float)
-        self.initial_pose_covariance_matrix[0, 0] = self.get_parameter('initial_covariance_xy').value
-        self.initial_pose_covariance_matrix[1, 1] = self.get_parameter('initial_covariance_xy').value
-        self.initial_pose_covariance_matrix[5, 5] = self.get_parameter('initial_covariance_theta').value
+        self.initial_pose_covariance_matrix[0, 0] = self.get_parameter('initial_pose_std_xy').value**2
+        self.initial_pose_covariance_matrix[1, 1] = self.get_parameter('initial_pose_std_xy').value**2
+        self.initial_pose_covariance_matrix[5, 5] = self.get_parameter('initial_pose_std_theta').value**2
         self.goal_tolerance = self.get_parameter('goal_tolerance').value
 
         # run variables
@@ -115,6 +115,7 @@ class LocalizationBenchmarkSupervisor(Node):
         self.localization_node_activated = False
         self.robot_radius = None
         self.initial_pose = None
+        self.traversal_path_poses = None
         self.current_goal = None
         self.goal_succeeded_count = 0
         self.goal_failed_count = 0
@@ -158,6 +159,9 @@ class LocalizationBenchmarkSupervisor(Node):
 
         # setup publishers
         self.initial_pose_publisher = self.create_publisher(PoseWithCovarianceStamped, initial_pose_topic, 1)
+        traversal_path_publisher_qos_profile = copy.copy(qos_profile_sensor_data)
+        traversal_path_publisher_qos_profile.durability = QoSDurabilityPolicy.TRANSIENT_LOCAL
+        self.traversal_path_publisher = self.create_publisher(Path, "~/traversal_path", traversal_path_publisher_qos_profile)
 
         # setup subscribers
         self.create_subscription(LaserScan, scan_topic, self.scan_callback, qos_profile_sensor_data)
@@ -171,7 +175,8 @@ class LocalizationBenchmarkSupervisor(Node):
         self.navigate_to_pose_action_result_future = None
 
     def start_run(self):
-        print_info("starting run")
+        print_info("preparing to start run")
+
         # wait to receive sensor data from the environment (e.g., a simulator may need time to startup)
         waiting_time = 0.0
         waiting_period = 0.5
@@ -189,9 +194,64 @@ class LocalizationBenchmarkSupervisor(Node):
         self.robot_radius = parameters_response.values[0].double_value
         print_info("got robot radius")
 
-        # sample the initial pose, and set the position of the robot in the simulator
-        self.sample_initial_pose()
-        print_info("sampled initial_pose")
+        # get deleaved reduced Voronoi graph from ground truth map
+        voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=2*self.robot_radius).copy()
+        minimum_length_paths = nx.all_pairs_dijkstra_path(voronoi_graph, weight='voronoi_path_distance')
+        minimum_length_costs = dict(nx.all_pairs_dijkstra_path_length(voronoi_graph, weight='voronoi_path_distance'))
+        costs = defaultdict(dict)
+        for i, paths_dict in minimum_length_paths:
+            for j in paths_dict.keys():
+                if i != j:
+                    costs[i][j] = minimum_length_costs[i][j]
+
+        # in case the graph has multiple unconnected components, remove the components with less than two nodes
+        too_small_voronoi_graph_components = list(filter(lambda component: len(component) < 2, nx.connected_components(voronoi_graph)))
+
+        for graph_component in too_small_voronoi_graph_components:
+            voronoi_graph.remove_nodes_from(graph_component)
+
+        if len(voronoi_graph.nodes) < 2:
+            self.write_event(self.get_clock().now(), 'insufficient_number_of_nodes_in_deleaved_reduced_voronoi_graph')
+            raise RunFailException("insufficient number of nodes in deleaved_reduced_voronoi_graph, can not generate traversal path")
+
+        # get greedy path traversing the whole graph starting from a random node
+        traversal_path_indices = list()
+        current_node = random.choice(list(voronoi_graph.nodes))
+        nodes_queue = set(nx.node_connected_component(voronoi_graph, current_node))
+        while len(nodes_queue):
+            candidates = list(filter(lambda node_cost: node_cost[0] in nodes_queue, costs[current_node].items()))
+            candidate_nodes, candidate_costs = zip(*candidates)
+            next_node = candidate_nodes[int(np.argmin(candidate_costs))]
+            traversal_path_indices.append(next_node)
+            current_node = next_node
+            nodes_queue.remove(next_node)
+
+        # convert path of nodes to list of poses (as deque so they can be popped)
+        self.traversal_path_poses = deque()
+        for node_index in traversal_path_indices:
+            pose = Pose()
+            pose.position.x, pose.position.y = voronoi_graph.nodes[node_index]['vertex']
+            q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
+            pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
+            self.traversal_path_poses.append(pose)
+
+        # publish the traversal path for visualization
+        traversal_path_msg = Path()
+        traversal_path_msg.header.frame_id = self.fixed_frame
+        traversal_path_msg.header.stamp = self.get_clock().now().to_msg()
+        for traversal_pose in self.traversal_path_poses:
+            traversal_pose_stamped = PoseStamped()
+            traversal_pose_stamped.header = traversal_path_msg.header
+            traversal_pose_stamped.pose = traversal_pose
+            traversal_path_msg.poses.append(traversal_pose_stamped)
+        self.traversal_path_publisher.publish(traversal_path_msg)
+
+        # pop the first pose from traversal_path_poses and set it as initial pose
+        self.initial_pose = PoseWithCovarianceStamped()
+        self.initial_pose.header.frame_id = self.fixed_frame
+        self.initial_pose.header.stamp = self.get_clock().now().to_msg()
+        self.initial_pose.pose.pose = self.traversal_path_poses.popleft()
+        self.initial_pose.pose.covariance = list(self.initial_pose_covariance_matrix.flat)
 
         # set the position of the robot in the simulator
         self.call_service(self.pause_physics_service_client, Empty.Request())
@@ -214,7 +274,6 @@ class LocalizationBenchmarkSupervisor(Node):
         startup_request = ManageLifecycleNodes.Request(command=ManageLifecycleNodes.Request.STARTUP)
         startup_response: ManageLifecycleNodes.Response = self.call_service(self.lifecycle_manager_service_client, startup_request)
         if not startup_response.success:
-            self.get_logger().fatal("lifecycle manager could not startup nodes")
             self.write_event(self.get_clock().now(), 'failed_to_startup_nodes')
             raise RunFailException("lifecycle manager could not startup nodes")
 
@@ -222,55 +281,25 @@ class LocalizationBenchmarkSupervisor(Node):
 
         self.send_goal()
 
-    def sample_initial_pose(self):
-        try:
-            x, y, theta = self.ground_truth_map.sample_robot_pose_from_free_cells(3 * self.robot_radius)
-            q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=theta)
-        except ground_truth_map_utils.NotFoundException as e:
-            print_error("could not sample initial pose:", e)
-            self.write_event(self.get_clock().now(), 'failed_to_sample_initial_pose')
-            raise RunFailException("could not sample initial pose")
-
-        self.initial_pose = PoseWithCovarianceStamped()
-        self.initial_pose.header.frame_id = self.fixed_frame
-        self.initial_pose.header.stamp = self.get_clock().now().to_msg()
-        self.initial_pose.pose.pose.position.x = x
-        self.initial_pose.pose.pose.position.y = y
-        self.initial_pose.pose.pose.orientation.w = q.w
-        self.initial_pose.pose.pose.orientation.x = q.x
-        self.initial_pose.pose.pose.orientation.y = q.y
-        self.initial_pose.pose.pose.orientation.z = q.z
-        self.initial_pose.pose.covariance = list(self.initial_pose_covariance_matrix.flat)
-
     def send_goal(self):
         print_info('waiting for navigate_to_pose action server')
         if not self.navigate_to_pose_action_client.wait_for_server(timeout_sec=5.0):
-            print_error("navigate_to_pose action server not available")
             self.write_event(self.get_clock().now(), 'failed_to_communicate_with_navigation_node')
             raise RunFailException("navigate_to_pose action server not available")
 
-        try:
-            x, y, theta = self.ground_truth_map.sample_robot_pose_from_free_cells(2 * self.robot_radius)
-            q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=theta)
-        except ground_truth_map_utils.NotFoundException as e:
-            print_error("could not sample initial pose:", e)
-            self.write_event(self.get_clock().now(), 'failed_to_sample_initial_pose')
-            raise RunFailException("could not sample initial pose")
+        if len(self.traversal_path_poses) == 0:
+            self.write_event(self.get_clock().now(), 'insufficient_number_of_poses_in_traversal_path')
+            raise RunFailException("insufficient number of poses in traversal path, can not send goal")
 
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose.header.stamp = self.get_clock().now().to_msg()
         goal_msg.pose.header.frame_id = self.fixed_frame
-        goal_msg.pose.pose.position.x = x
-        goal_msg.pose.pose.position.y = y
-        goal_msg.pose.pose.orientation.w = q.w
-        goal_msg.pose.pose.orientation.x = q.x
-        goal_msg.pose.pose.orientation.y = q.y
-        goal_msg.pose.pose.orientation.z = q.z
+        goal_msg.pose.pose = self.traversal_path_poses.popleft()
+        self.current_goal = goal_msg
 
         self.navigate_to_pose_action_goal_future = self.navigate_to_pose_action_client.send_goal_async(goal_msg)
         self.navigate_to_pose_action_goal_future.add_done_callback(self.goal_response_callback)
         self.write_event(self.get_clock().now(), 'target_pose_set')
-        self.current_goal = goal_msg
 
     def ros_shutdown_callback(self):
         """
@@ -328,7 +357,7 @@ class LocalizationBenchmarkSupervisor(Node):
         self.current_goal = None
 
         # if all goals have been sent or the maximum number of rejected goals has been reached, end the run, otherwise send the next goal
-        if self.goal_succeeded_count + self.goal_failed_count >= self.num_goals or self.goal_rejected_count > self.max_rejected_goals:
+        if len(self.traversal_path_poses) == 0:
             self.write_event(self.get_clock().now(), 'run_completed')
             rclpy.shutdown()
         else:
@@ -460,7 +489,6 @@ class LocalizationBenchmarkSupervisor(Node):
             self.get_logger().warning(f'supervisor: still waiting {service_client.srv_name} to become available')
             time_waited += warning_timeout
             if time_waited >= fail_timeout:
-                self.get_logger().error(f'supervisor: {service_client.srv_name} not available')
                 raise RunFailException(f"{service_client.srv_name} was not available")
 
         srv_future = service_client.call_async(request)
