@@ -9,11 +9,16 @@ from nav2_common.launch import Node
 def generate_launch_description():
 
     ld = LaunchDescription([
-        SetEnvironmentVariable('RCUTILS_CONSOLE_STDOUT_LINE_BUFFERED', '1'),
+        DeclareLaunchArgument(
+            'gazebo_model_path_env_var',
+            description='GAZEBO_MODEL_PATH environment variable'),
+        DeclareLaunchArgument(
+            'gazebo_plugin_path_env_var',
+            description='GAZEBO_PLUGIN_PATH environment variable'),
         DeclareLaunchArgument(
             'headless',
             default_value='False',
-            description='Whether to execute gzclient)'),
+            description='Whether to execute gzclient'),
         DeclareLaunchArgument(
             'world_model_file',
             description='Full path to world model file to load'),
@@ -23,6 +28,9 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'robot_realistic_urdf_file',
             description='Full path to robot urdf model file to load'),
+        SetEnvironmentVariable('RCUTILS_CONSOLE_STDOUT_LINE_BUFFERED', '1'),
+        SetEnvironmentVariable('GAZEBO_MODEL_PATH', LaunchConfiguration('gazebo_model_path_env_var')),
+        SetEnvironmentVariable('GAZEBO_PLUGIN_PATH', LaunchConfiguration('gazebo_plugin_path_env_var')),
         ExecuteProcess(
             cmd=['gzserver', '--verbose', '-s', 'libgazebo_ros_init.so', LaunchConfiguration('world_model_file')],
             output='screen'),

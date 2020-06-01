@@ -17,7 +17,7 @@ def main():
     parser.add_argument('-e', dest='environment_dataset_folders',
                         help='Dataset folders containg the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
                         type=str,
-                        default="~/ds/performance_modelling_test_datasets/turtlebot3_world",
+                        default="~/ds/performance_modelling/dataset_v4_n4",
                         required=False)
 
     parser.add_argument('-c', dest='grid_benchmark_configuration',
@@ -29,7 +29,7 @@ def main():
     parser.add_argument('-r', dest='base_run_folder',
                         help='Folder in which the result of each run will be placed.',
                         type=str,
-                        default="~/ds/performance_modelling_output/test_localization/",
+                        default="~/ds/performance_modelling/output/test_localization/",
                         required=False)
 
     parser.add_argument('-n', '--num-runs', dest='num_runs',
@@ -53,12 +53,11 @@ def main():
 
     environment_folders = sorted(filter(path.isdir, glob.glob(path.expanduser(args.environment_dataset_folders), recursive=True)))
 
-    grid_benchmark_configuration = path.join("/home/enrico/w/ros2_ws/src/localization_performance_modelling/config", "benchmark_configurations", args.grid_benchmark_configuration)
-    components_configurations_folder = path.join("/home/enrico/w/ros2_ws/src/localization_performance_modelling/config", "component_configurations")
+    grid_benchmark_configuration = path.expanduser(path.join("~/w/ros2_ws/src/localization_performance_modelling/config", "benchmark_configurations", args.grid_benchmark_configuration))
 
     execute_grid_benchmark(benchmark_run_object=BenchmarkRun,
                            grid_benchmark_configuration=grid_benchmark_configuration,
-                           components_configurations_folder=components_configurations_folder,
+                           # components_configurations_folder=components_configurations_folder,
                            environment_folders=environment_folders,
                            base_run_folder=base_run_folder,
                            num_runs=args.num_runs,
