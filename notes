@@ -1,6 +1,0 @@
-Error after setting initial pose a few times
-[amcl-11] [INFO] [amcl]: initialPoseReceived
-[amcl-11] [INFO] [amcl]: Setting pose (300.411000): -0.525 -2.752 0.996
-[amcl-11] amcl: /tmp/binarydeb/ros-eloquent-nav2-amcl-0.3.3/src/pf/pf.c:379: pf_update_resample: Assertion `i < set_a->sample_count' failed.
-[ERROR] [amcl-11]: process has died [pid 27580, exit code -6, cmd '/opt/ros/eloquent/lib/nav2_amcl/amcl --ros-args -r __node:=amcl --params-file /tmp/tmpk6kmuu71        '].
-
