@@ -282,7 +282,6 @@ class LocalizationBenchmarkSupervisor(Node):
         self.send_goal()
 
     def send_goal(self):
-        print_info('waiting for navigate_to_pose action server')
         if not self.navigate_to_pose_action_client.wait_for_server(timeout_sec=5.0):
             self.write_event(self.get_clock().now(), 'failed_to_communicate_with_navigation_node')
             raise RunFailException("navigate_to_pose action server not available")
