@@ -3,8 +3,9 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, EmitEvent
 from launch.conditions import IfCondition
+from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 
 from nav2_common.launch import Node
@@ -39,8 +40,6 @@ def generate_launch_description():
             convert_types=True)
 
     return LaunchDescription([
-        # Set env var to print messages to stdout immediately
-        # SetEnvironmentVariable('RCUTILS_CONSOLE_STDOUT_LINE_BUFFERED', '1'),
 
         DeclareLaunchArgument(
             'namespace', default_value='',
@@ -60,7 +59,8 @@ def generate_launch_description():
             description='Full path to the behavior tree xml file to use'),
 
         DeclareLaunchArgument(
-            'use_remappings', default_value='false',
+            'use_remappings',
+            default_value='false',
             description='Arguments to pass to all nodes launched by the file'),
 
         Node(
@@ -69,7 +69,9 @@ def generate_launch_description():
             output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
-            remappings=remappings),
+            remappings=remappings,
+            on_exit=EmitEvent(event=Shutdown(reason='nav2_controller_error'))
+        ),
 
         Node(
             package='nav2_planner',
@@ -78,7 +80,9 @@ def generate_launch_description():
             output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
-            remappings=remappings),
+            remappings=remappings,
+            on_exit=EmitEvent(event=Shutdown(reason='nav2_planner_error'))
+        ),
 
         Node(
             package='nav2_recoveries',
@@ -87,7 +91,9 @@ def generate_launch_description():
             output='log',
             parameters=[{'use_sim_time': use_sim_time}],
             use_remappings=IfCondition(use_remappings),
-            remappings=remappings),
+            remappings=remappings,
+            on_exit=EmitEvent(event=Shutdown(reason='nav2_recoveries_error'))
+        ),
 
         Node(
             package='nav2_bt_navigator',
@@ -96,7 +102,9 @@ def generate_launch_description():
             output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
-            remappings=remappings),
+            remappings=remappings,
+            on_exit=EmitEvent(event=Shutdown(reason='nav2_bt_navigator_error'))
+        ),
 
         Node(
             package='nav2_waypoint_follower',
@@ -105,6 +113,8 @@ def generate_launch_description():
             output='log',
             parameters=[configured_params],
             use_remappings=IfCondition(use_remappings),
-            remappings=remappings),
+            remappings=remappings,
+            on_exit=EmitEvent(event=Shutdown(reason='nav2_waypoint_follower_error'))
+        ),
 
     ])

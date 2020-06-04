@@ -14,7 +14,7 @@ from os import path
 import numpy as np
 
 from performance_modelling_py.utils import backup_file_if_exists, print_info, print_error
-from performance_modelling_py.component_proxies.ros2_component import Component
+from performance_modelling_py.component_proxies.ros2_component import Component, ComponentsLauncher
 from localization_performance_modelling.metrics import compute_metrics
 
 
@@ -165,15 +165,16 @@ class BenchmarkRun(object):
 
         if not path.exists(self.benchmark_log_path):
             with open(self.benchmark_log_path, 'a') as output_file:
-                output_file.write("{t}, {run_id}, {event}\n".format(t="timestamp", run_id="run_id", event="event"))
+                output_file.write("timestamp, run_id, event\n")
 
         t = time.time()
 
+        print_info(f"t: {t}, run: {self.run_id}, event: {event}")
         try:
             with open(self.benchmark_log_path, 'a') as output_file:
-                output_file.write("{t}, {run_id}, {event}\n".format(t=t, run_id=self.run_id, event=event))
+                output_file.write(f"{t}, {self.run_id}, {event}\n")
         except IOError as e:
-            print_error("benchmark_log: could not write event to file: {t}, {run_id}, {event}".format(t=t, run_id=self.run_id, event=event))
+            print_error(f"benchmark_log: could not write event to file: {t}, {self.run_id}, {event}")
             print_error(e)
 
     def execute_run(self):
@@ -216,28 +217,25 @@ class BenchmarkRun(object):
         # TODO manage launch exceptions in Component.__init__
 
         # launch components
+        components_launcher = ComponentsLauncher()
+
         print_info("execute_run: launching components")
         if not self.headless:
-            rviz.launch()
+            components_launcher.add_component(rviz)
         # recorder.launch()
-        environment.launch()
-        navigation.launch()
-        localization.launch()
+        components_launcher.add_component(environment)
+        components_launcher.add_component(navigation)
+        components_launcher.add_component(localization)
+        components_launcher.add_component(supervisor)
 
         # wait for the supervisor component to finish
-        print_info("execute_run: waiting for supervisor to finish")
         self.log(event="waiting_supervisor_finish")
-        supervisor.launch_and_wait_to_finish()
-        print_info("execute_run: supervisor has shutdown")
+        components_launcher.launch()
         self.log(event="supervisor_shutdown")
 
-        # shutdown remaining components
-        # recorder.shutdown()
-        if not self.headless:
-            rviz.shutdown()
-        navigation.shutdown()
-        localization.shutdown()
-        environment.shutdown()
+        # make sure remaining components have shutdown
+        components_launcher.shutdown()
+
         print_info("execute_run: components shutdown completed")
 
         # compute all relevant metrics and visualisations
