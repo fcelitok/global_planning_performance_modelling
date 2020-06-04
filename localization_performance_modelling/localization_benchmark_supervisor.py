@@ -108,6 +108,7 @@ class LocalizationBenchmarkSupervisor(Node):
         self.goal_tolerance = self.get_parameter('goal_tolerance').value
 
         # run variables
+        self.run_started = False
         self.terminate = False
         self.ps_snapshot_count = 0
         self.received_first_scan = False
@@ -117,6 +118,8 @@ class LocalizationBenchmarkSupervisor(Node):
         self.initial_pose = None
         self.traversal_path_poses = None
         self.current_goal = None
+        self.num_goals = None
+        self.goal_sent_count = 0
         self.goal_succeeded_count = 0
         self.goal_failed_count = 0
         self.goal_rejected_count = 0
@@ -253,6 +256,8 @@ class LocalizationBenchmarkSupervisor(Node):
         self.initial_pose.pose.pose = self.traversal_path_poses.popleft()
         self.initial_pose.pose.covariance = list(self.initial_pose_covariance_matrix.flat)
 
+        self.num_goals = len(self.traversal_path_poses)
+
         # set the position of the robot in the simulator
         self.call_service(self.pause_physics_service_client, Empty.Request())
         print_info("called pause_physics_service")
@@ -263,7 +268,10 @@ class LocalizationBenchmarkSupervisor(Node):
             pose=self.initial_pose.pose.pose
         )
         set_entity_state_response = self.call_service(self.set_entity_state_service_client, SetEntityState.Request(state=robot_entity_state))
-        print_info("called set_entity_state_service", set_entity_state_response)
+        if not set_entity_state_response.success:
+            self.write_event(self.get_clock().now(), 'failed_to_set_entity_state')
+            raise RunFailException("could not set robot entity state")
+        print_info("called set_entity_state_service")
         time.sleep(1.0)
 
         self.call_service(self.unpause_physics_service_client, Empty.Request())
@@ -278,10 +286,13 @@ class LocalizationBenchmarkSupervisor(Node):
             raise RunFailException("lifecycle manager could not startup nodes")
 
         self.write_event(self.get_clock().now(), 'run_start')
+        self.run_started = True
 
         self.send_goal()
 
     def send_goal(self):
+        print_info(f"goal {self.goal_sent_count + 1} / {self.num_goals}")
+
         if not self.navigate_to_pose_action_client.wait_for_server(timeout_sec=5.0):
             self.write_event(self.get_clock().now(), 'failed_to_communicate_with_navigation_node')
             raise RunFailException("navigate_to_pose action server not available")
@@ -299,6 +310,7 @@ class LocalizationBenchmarkSupervisor(Node):
         self.navigate_to_pose_action_goal_future = self.navigate_to_pose_action_client.send_goal_async(goal_msg)
         self.navigate_to_pose_action_goal_future.add_done_callback(self.goal_response_callback)
         self.write_event(self.get_clock().now(), 'target_pose_set')
+        self.goal_sent_count += 1
 
     def ros_shutdown_callback(self):
         """
@@ -355,7 +367,7 @@ class LocalizationBenchmarkSupervisor(Node):
 
         self.current_goal = None
 
-        # if all goals have been sent or the maximum number of rejected goals has been reached, end the run, otherwise send the next goal
+        # if all goals have been sent end the run, otherwise send the next goal
         if len(self.traversal_path_poses) == 0:
             self.write_event(self.get_clock().now(), 'run_completed')
             rclpy.shutdown()
@@ -376,10 +388,13 @@ class LocalizationBenchmarkSupervisor(Node):
         print_error("terminating supervisor due to timeout, terminating run")
         self.write_event(self.get_clock().now(), 'run_timeout')
         self.write_event(self.get_clock().now(), 'supervisor_finished')
-        rclpy.shutdown()
+        raise RunFailException("timeout")
 
     def scan_callback(self, laser_scan_msg):
         self.received_first_scan = True
+        if not self.run_started:
+            return
+
         msg_time = nanoseconds_to_seconds(laser_scan_msg.header.stamp.nanosec) + float(laser_scan_msg.header.stamp.sec)
         with open(self.scans_file_path, 'a') as scans_file:
             scans_file.write("{t}, {angle_min}, {angle_max}, {angle_increment}, {range_min}, {range_max}, {ranges}\n".format(
@@ -408,6 +423,9 @@ class LocalizationBenchmarkSupervisor(Node):
             pass
 
     def estimated_pose_correction_callback(self, pose_with_covariance_msg: geometry_msgs.msg.PoseWithCovarianceStamped):
+        if not self.run_started:
+            return
+
         orientation = pose_with_covariance_msg.pose.pose.orientation
         theta, _, _ = pyquaternion.Quaternion(x=orientation.x, y=orientation.y, z=orientation.z, w=orientation.w).yaw_pitch_roll
         covariance_mat = np.array(pose_with_covariance_msg.pose.covariance).reshape(6, 6)
@@ -425,6 +443,9 @@ class LocalizationBenchmarkSupervisor(Node):
 
     def ground_truth_pose_callback(self, odometry_msg: nav_msgs.msg.Odometry):
         self.latest_ground_truth_pose_msg = odometry_msg
+        if not self.run_started:
+            return
+
         orientation = odometry_msg.pose.pose.orientation
         theta, _, _ = pyquaternion.Quaternion(x=orientation.x, y=orientation.y, z=orientation.z, w=orientation.w).yaw_pitch_roll
 
