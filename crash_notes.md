@@ -1,4 +1,4 @@
-Error after setting initial pose a few times
+# AMCL Error after setting initial pose a few times
 ```
 [amcl-11] [INFO] [amcl]: initialPoseReceived
 [amcl-11] [INFO] [amcl]: Setting pose (300.411000): -0.525 -2.752 0.996
@@ -6,7 +6,7 @@ Error after setting initial pose a few times
 [ERROR] [amcl-11]: process has died [pid 27580, exit code -6, cmd '/opt/ros/eloquent/lib/nav2_amcl/amcl --ros-args -r __node:=amcl --params-file /tmp/tmpk6kmuu71        '].
 ```
 
-BT Navigator error after goal pose has been accepted
+# BT Navigator error after goal pose has been accepted
 ```
 benchmark: starting run 5
 	environment_folder: /home/enrico/ds/performance_modelling/dataset_v4_n4/airlab
