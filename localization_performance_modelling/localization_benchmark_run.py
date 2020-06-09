@@ -34,8 +34,6 @@ class BenchmarkRun(object):
         # environment parameters
         self.environment_folder = environment_folder
         self.map_info_file_path = path.join(environment_folder, "data", "map.yaml")
-        self.robot_gt_urdf_file = path.join(environment_folder, "gazebo", "robot_gt.urdf")
-        self.robot_realistic_urdf_file = path.join(environment_folder, "gazebo", "robot_realistic.urdf")
         self.gazebo_model_path_env_var = ":".join(map(
             lambda p: path.expanduser(p),
             self.benchmark_configuration['gazebo_model_path_env_var'] + [self.run_output_folder]
@@ -61,13 +59,14 @@ class BenchmarkRun(object):
 
         # components original configuration paths
         components_configurations_folder = path.expanduser(self.benchmark_configuration['components_configurations_folder'])
-        supervisor_original_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['supervisor'])
-        nav2_amcl_original_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['nav2_amcl'])
-        nav2_navigation_original_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['nav2_navigation'])
-        gazebo_world_model_original_path = path.join(environment_folder, "gazebo", "gazebo_environment.model")
-        gazebo_robot_model_config_original_path = path.join(environment_folder, "gazebo", "robot", "model.config")
-        gazebo_robot_model_sdf_original_path = path.join(environment_folder, "gazebo", "robot", "model.sdf")
-        self.rviz_original_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['rviz'])
+        original_supervisor_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['supervisor'])
+        original_nav2_amcl_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['nav2_amcl'])
+        original_nav2_navigation_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['nav2_navigation'])
+        self.original_rviz_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['rviz'])
+        original_gazebo_world_model_path = path.join(environment_folder, "gazebo", "gazebo_environment.model")
+        original_gazebo_robot_model_config_path = path.join(environment_folder, "gazebo", "robot", "model.config")
+        original_gazebo_robot_model_sdf_path = path.join(environment_folder, "gazebo", "robot", "model.sdf")
+        original_robot_urdf_file = path.join(environment_folder, "gazebo", "robot.urdf")
 
         # components configuration relative paths
         supervisor_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['supervisor'])
@@ -76,6 +75,8 @@ class BenchmarkRun(object):
         gazebo_world_model_relative_path = path.join("components_configuration", "gazebo", "gazebo_environment.model")
         gazebo_robot_model_config_relative_path = path.join("components_configuration", "gazebo", "robot", "model.config")
         gazebo_robot_model_sdf_relative_path = path.join("components_configuration", "gazebo", "robot", "model.sdf")
+        robot_gt_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_gt.urdf")
+        robot_realistic_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_realistic.urdf")
 
         # components configuration paths in run folder
         self.supervisor_configuration_path = path.join(self.run_output_folder, supervisor_configuration_relative_path)
@@ -84,9 +85,11 @@ class BenchmarkRun(object):
         self.gazebo_world_model_path = path.join(self.run_output_folder, gazebo_world_model_relative_path)
         gazebo_robot_model_config_path = path.join(self.run_output_folder, gazebo_robot_model_config_relative_path)
         gazebo_robot_model_sdf_path = path.join(self.run_output_folder, gazebo_robot_model_sdf_relative_path)
+        self.robot_gt_urdf_path = path.join(self.run_output_folder, robot_gt_urdf_relative_path)
+        self.robot_realistic_urdf_path = path.join(self.run_output_folder, robot_realistic_urdf_relative_path)
 
         # copy the configuration of the supervisor to the run folder and update its parameters
-        with open(supervisor_original_configuration_path) as supervisor_configuration_file:
+        with open(original_supervisor_configuration_path) as supervisor_configuration_file:
             supervisor_configuration = yaml.load(supervisor_configuration_file)
         supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['run_output_folder'] = self.run_output_folder
         supervisor_configuration['localization_benchmark_supervisor']['ros__parameters']['pid_father'] = os.getpid()
@@ -98,7 +101,7 @@ class BenchmarkRun(object):
             yaml.dump(supervisor_configuration, supervisor_configuration_file, default_flow_style=False)
 
         # copy the configuration of nav2_amcl to the run folder and update its parameters
-        with open(nav2_amcl_original_configuration_path) as nav2_amcl_original_configuration_file:
+        with open(original_nav2_amcl_configuration_path) as nav2_amcl_original_configuration_file:
             nav2_amcl_configuration = yaml.load(nav2_amcl_original_configuration_file)
         nav2_amcl_configuration['amcl']['ros__parameters']['alpha1'] = 2 * beta_1**2
         nav2_amcl_configuration['amcl']['ros__parameters']['alpha2'] = 2 * beta_2**2
@@ -113,10 +116,10 @@ class BenchmarkRun(object):
         # copy the configuration of nav2_navigation to the run folder
         if not path.exists(path.dirname(self.nav2_navigation_configuration_path)):
             os.makedirs(path.dirname(self.nav2_navigation_configuration_path))
-        shutil.copyfile(nav2_navigation_original_configuration_path, self.nav2_navigation_configuration_path)
+        shutil.copyfile(original_nav2_navigation_configuration_path, self.nav2_navigation_configuration_path)
 
         # copy the configuration of the gazebo world model to the run folder and update its parameters
-        gazebo_original_world_model_tree = et.parse(gazebo_world_model_original_path)
+        gazebo_original_world_model_tree = et.parse(original_gazebo_world_model_path)
         gazebo_original_world_model_root = gazebo_original_world_model_tree.getroot()
         gazebo_original_world_model_root.findall(".//model[@name='robot']/include/uri")[0].text = path.join("model://", path.dirname(gazebo_robot_model_sdf_relative_path))
         if not path.exists(path.dirname(self.gazebo_world_model_path)):
@@ -124,12 +127,13 @@ class BenchmarkRun(object):
         gazebo_original_world_model_tree.write(self.gazebo_world_model_path)
 
         # copy the configuration of the gazebo robot sdf model to the run folder and update its parameters
-        gazebo_robot_model_sdf_tree = et.parse(gazebo_robot_model_sdf_original_path)
+        gazebo_robot_model_sdf_tree = et.parse(original_gazebo_robot_model_sdf_path)
         gazebo_robot_model_sdf_root = gazebo_robot_model_sdf_tree.getroot()
         gazebo_robot_model_sdf_root.findall(".//sensor[@name='lidar_sensor']/ray/scan/horizontal/samples")[0].text = str(int(laser_scan_fov_deg))
         gazebo_robot_model_sdf_root.findall(".//sensor[@name='lidar_sensor']/ray/scan/horizontal/min_angle")[0].text = str(float(-laser_scan_fov_rad/2))
         gazebo_robot_model_sdf_root.findall(".//sensor[@name='lidar_sensor']/ray/scan/horizontal/max_angle")[0].text = str(float(+laser_scan_fov_rad/2))
         gazebo_robot_model_sdf_root.findall(".//sensor[@name='lidar_sensor']/ray/range/max")[0].text = str(float(laser_scan_max_range))
+        gazebo_robot_model_sdf_root.findall(".//sensor[@name='lidar_sensor']/plugin[@name='turtlebot3_laserscan_realistic']/frame_name")[0].text = "base_scan_realistic"
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/alpha1")[0].text = str(beta_1)
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/alpha2")[0].text = str(beta_2)
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/alpha3")[0].text = str(beta_3)
@@ -141,7 +145,33 @@ class BenchmarkRun(object):
         # copy the configuration of the gazebo robot model to the run folder
         if not path.exists(path.dirname(gazebo_robot_model_config_path)):
             os.makedirs(path.dirname(gazebo_robot_model_config_path))
-        shutil.copyfile(gazebo_robot_model_config_original_path, gazebo_robot_model_config_path)
+        shutil.copyfile(original_gazebo_robot_model_config_path, gazebo_robot_model_config_path)
+
+        # copy the configuration of the robot urdf to the run folder and update the link names for ground truth data
+        robot_gt_urdf_tree = et.parse(original_robot_urdf_file)
+        robot_gt_urdf_root = robot_gt_urdf_tree.getroot()
+        for link_element in robot_gt_urdf_root.findall(".//link"):
+            if link_element.attrib['name'] == "base_link":  # currently (Eloquent) base_link is hardcoded in the navigation stack so it cannot be renamed
+                continue
+            link_element.attrib['name'] = "{}_gt".format(link_element.attrib['name'])
+        for joint_link_element in robot_gt_urdf_root.findall(".//*[@link]"):
+            if joint_link_element.attrib['link'] == "base_link":  # currently (Eloquent) base_link is hardcoded in the navigation stack so it cannot be renamed
+                continue
+            joint_link_element.attrib['link'] = "{}_gt".format(joint_link_element.attrib['link'])
+        if not path.exists(path.dirname(self.robot_gt_urdf_path)):
+            os.makedirs(path.dirname(self.robot_gt_urdf_path))
+        robot_gt_urdf_tree.write(self.robot_gt_urdf_path)
+
+        # copy the configuration of the robot urdf to the run folder and update the link names for realistic data
+        robot_realistic_urdf_tree = et.parse(original_robot_urdf_file)
+        robot_realistic_urdf_root = robot_realistic_urdf_tree.getroot()
+        for link_element in robot_realistic_urdf_root.findall(".//link"):
+            link_element.attrib['name'] = "{}_realistic".format(link_element.attrib['name'])
+        for joint_link_element in robot_realistic_urdf_root.findall(".//*[@link]"):
+            joint_link_element.attrib['link'] = "{}_realistic".format(joint_link_element.attrib['link'])
+        if not path.exists(path.dirname(self.robot_realistic_urdf_path)):
+            os.makedirs(path.dirname(self.robot_realistic_urdf_path))
+        robot_realistic_urdf_tree.write(self.robot_realistic_urdf_path)
 
         # write run info to file
         run_info_dict = dict()
@@ -181,14 +211,14 @@ class BenchmarkRun(object):
 
         # components parameters
         rviz_params = {
-            'rviz_config_file': self.rviz_original_configuration_path,
+            'rviz_config_file': self.original_rviz_configuration_path,
         }
         environment_params = {
             'gazebo_model_path_env_var': self.gazebo_model_path_env_var,
             'gazebo_plugin_path_env_var': self.gazebo_plugin_path_env_var,
             'world_model_file': self.gazebo_world_model_path,
-            'robot_gt_urdf_file': self.robot_gt_urdf_file,
-            'robot_realistic_urdf_file': self.robot_realistic_urdf_file,
+            'robot_gt_urdf_file': self.robot_gt_urdf_path,
+            'robot_realistic_urdf_file': self.robot_realistic_urdf_path,
             'headless': self.headless,
         }
         localization_params = {
@@ -216,10 +246,8 @@ class BenchmarkRun(object):
 
         # TODO manage launch exceptions in Component.__init__
 
-        # launch components
+        # add components to launcher
         components_launcher = ComponentsLauncher()
-
-        print_info("execute_run: launching components")
         if not self.headless:
             components_launcher.add_component(rviz)
         # recorder.launch()
@@ -228,14 +256,13 @@ class BenchmarkRun(object):
         components_launcher.add_component(localization)
         components_launcher.add_component(supervisor)
 
-        # wait for the supervisor component to finish
+        # launch components and wait for the supervisor to finish
         self.log(event="waiting_supervisor_finish")
         components_launcher.launch()
         self.log(event="supervisor_shutdown")
 
         # make sure remaining components have shutdown
         components_launcher.shutdown()
-
         print_info("execute_run: components shutdown completed")
 
         # compute all relevant metrics and visualisations
