@@ -138,6 +138,9 @@ class BenchmarkRun(object):
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/alpha2")[0].text = str(beta_2)
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/alpha3")[0].text = str(beta_3)
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/alpha4")[0].text = str(beta_4)
+        gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/odometry_topic")[0].text = "odom_realistic"
+        gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/odometry_frame")[0].text = "odom_realistic"
+        gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/ground_truth_parent_frame")[0].text = "odom"  # currently (Eloquent) odom is hardcoded in the navigation stack so it cannot be renamed for ground truth
         if not path.exists(path.dirname(gazebo_robot_model_sdf_path)):
             os.makedirs(path.dirname(gazebo_robot_model_sdf_path))
         gazebo_robot_model_sdf_tree.write(gazebo_robot_model_sdf_path)
