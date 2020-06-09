@@ -57,7 +57,6 @@ def main():
 
     execute_grid_benchmark(benchmark_run_object=BenchmarkRun,
                            grid_benchmark_configuration=grid_benchmark_configuration,
-                           # components_configurations_folder=components_configurations_folder,
                            environment_folders=environment_folders,
                            base_run_folder=base_run_folder,
                            num_runs=args.num_runs,
