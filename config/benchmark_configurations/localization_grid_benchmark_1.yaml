@@ -1,5 +1,5 @@
 components_configurations_folder: ~/w/ros2_ws/src/localization_performance_modelling/config/component_configurations
-gazebo_model_path_env_var: [~/w/ros2_ws/src/turtlebot3_simulations/turtlebot3_gazebo/models/, ~/ds/performance_modelling/dataset_v3]
+gazebo_model_path_env_var: [~/w/ros2_ws/src/turtlebot3_simulations/turtlebot3_gazebo/models/]
 gazebo_plugin_path_env_var: [~/w/ros2_ws/build/gazebo_plugins/]
 
 supervisor_component: localization_benchmark_supervisor

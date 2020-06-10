@@ -20,7 +20,7 @@ from lifecycle_msgs.msg import TransitionEvent
 from nav2_msgs.action import NavigateToPose
 from nav2_msgs.srv import ManageLifecycleNodes
 from nav_msgs.msg import Odometry, Path
-from performance_modelling_py.environment import ground_truth_map_utils
+from performance_modelling_py.environment import ground_truth_map
 from rcl_interfaces.srv import GetParameters
 from rclpy.action import ActionClient
 from rclpy.node import Node
@@ -100,7 +100,7 @@ class LocalizationBenchmarkSupervisor(Node):
         write_estimated_poses_period = self.get_parameter('write_estimated_poses_period').value
         self.ps_pid_father = self.get_parameter('pid_father').value
         self.ps_processes = psutil.Process(self.ps_pid_father).children(recursive=True)  # list of processes children of the benchmark script, i.e., all ros nodes of the benchmark including this one
-        self.ground_truth_map = ground_truth_map_utils.GroundTruthMap(self.ground_truth_map_info_path)
+        self.ground_truth_map = ground_truth_map.GroundTruthMap(self.ground_truth_map_info_path)
         self.initial_pose_covariance_matrix = np.zeros((6, 6), dtype=float)
         self.initial_pose_covariance_matrix[0, 0] = self.get_parameter('initial_pose_std_xy').value**2
         self.initial_pose_covariance_matrix[1, 1] = self.get_parameter('initial_pose_std_xy').value**2

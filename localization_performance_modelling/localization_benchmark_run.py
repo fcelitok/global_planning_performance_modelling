@@ -36,7 +36,7 @@ class BenchmarkRun(object):
         self.map_info_file_path = path.join(environment_folder, "data", "map.yaml")
         self.gazebo_model_path_env_var = ":".join(map(
             lambda p: path.expanduser(p),
-            self.benchmark_configuration['gazebo_model_path_env_var'] + [self.run_output_folder]
+            self.benchmark_configuration['gazebo_model_path_env_var'] + [path.dirname(path.abspath(self.environment_folder)), self.run_output_folder]
         ))
         self.gazebo_plugin_path_env_var = ":".join(map(
             lambda p: path.expanduser(p),
@@ -66,7 +66,7 @@ class BenchmarkRun(object):
         original_gazebo_world_model_path = path.join(environment_folder, "gazebo", "gazebo_environment.model")
         original_gazebo_robot_model_config_path = path.join(environment_folder, "gazebo", "robot", "model.config")
         original_gazebo_robot_model_sdf_path = path.join(environment_folder, "gazebo", "robot", "model.sdf")
-        original_robot_urdf_file = path.join(environment_folder, "gazebo", "robot.urdf")
+        original_robot_urdf_path = path.join(environment_folder, "gazebo", "robot.urdf")
 
         # components configuration relative paths
         supervisor_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['supervisor'])
@@ -121,7 +121,7 @@ class BenchmarkRun(object):
         # copy the configuration of the gazebo world model to the run folder and update its parameters
         gazebo_original_world_model_tree = et.parse(original_gazebo_world_model_path)
         gazebo_original_world_model_root = gazebo_original_world_model_tree.getroot()
-        gazebo_original_world_model_root.findall(".//model[@name='robot']/include/uri")[0].text = path.join("model://", path.dirname(gazebo_robot_model_sdf_relative_path))
+        gazebo_original_world_model_root.findall(".//include[@include_id='robot_model']/uri")[0].text = path.join("model://", path.dirname(gazebo_robot_model_sdf_relative_path))
         if not path.exists(path.dirname(self.gazebo_world_model_path)):
             os.makedirs(path.dirname(self.gazebo_world_model_path))
         gazebo_original_world_model_tree.write(self.gazebo_world_model_path)
@@ -140,7 +140,9 @@ class BenchmarkRun(object):
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/alpha4")[0].text = str(beta_4)
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/odometry_topic")[0].text = "odom_realistic"
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/odometry_frame")[0].text = "odom_realistic"
+        gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/robot_base_frame")[0].text = "base_footprint_realistic"
         gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/ground_truth_parent_frame")[0].text = "odom"  # currently (Eloquent) odom is hardcoded in the navigation stack so it cannot be renamed for ground truth
+        gazebo_robot_model_sdf_root.findall(".//plugin[@name='turtlebot3_diff_drive']/ground_truth_robot_base_frame")[0].text = "base_footprint_gt"
         if not path.exists(path.dirname(gazebo_robot_model_sdf_path)):
             os.makedirs(path.dirname(gazebo_robot_model_sdf_path))
         gazebo_robot_model_sdf_tree.write(gazebo_robot_model_sdf_path)
@@ -151,7 +153,7 @@ class BenchmarkRun(object):
         shutil.copyfile(original_gazebo_robot_model_config_path, gazebo_robot_model_config_path)
 
         # copy the configuration of the robot urdf to the run folder and update the link names for ground truth data
-        robot_gt_urdf_tree = et.parse(original_robot_urdf_file)
+        robot_gt_urdf_tree = et.parse(original_robot_urdf_path)
         robot_gt_urdf_root = robot_gt_urdf_tree.getroot()
         for link_element in robot_gt_urdf_root.findall(".//link"):
             if link_element.attrib['name'] == "base_link":  # currently (Eloquent) base_link is hardcoded in the navigation stack so it cannot be renamed
@@ -166,7 +168,7 @@ class BenchmarkRun(object):
         robot_gt_urdf_tree.write(self.robot_gt_urdf_path)
 
         # copy the configuration of the robot urdf to the run folder and update the link names for realistic data
-        robot_realistic_urdf_tree = et.parse(original_robot_urdf_file)
+        robot_realistic_urdf_tree = et.parse(original_robot_urdf_path)
         robot_realistic_urdf_root = robot_realistic_urdf_tree.getroot()
         for link_element in robot_realistic_urdf_root.findall(".//link"):
             link_element.attrib['name'] = "{}_realistic".format(link_element.attrib['name'])
@@ -189,6 +191,8 @@ class BenchmarkRun(object):
             'gazebo_world_model': gazebo_world_model_relative_path,
             'gazebo_robot_model_sdf': gazebo_robot_model_sdf_relative_path,
             'gazebo_robot_model_config': gazebo_robot_model_config_relative_path,
+            'robot_gt_urdf': robot_gt_urdf_relative_path,
+            'robot_realistic_urdf': robot_realistic_urdf_relative_path,
         }
 
         with open(run_info_file_path, 'w') as run_info_file:

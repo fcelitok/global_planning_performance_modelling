@@ -17,13 +17,13 @@ def main():
     parser.add_argument('-e', dest='environment_dataset_folders',
                         help='Dataset folders containg the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
                         type=str,
-                        default="~/ds/performance_modelling/dataset_v4_n4",
+                        default="~/ds/performance_modelling/test_datasets/dataset/*",
                         required=False)
 
     parser.add_argument('-c', dest='grid_benchmark_configuration',
                         help='Yaml file with the configuration of the benchmark.',
                         type=str,
-                        default="localization_grid_benchmark_1.yaml",
+                        default="~/w/ros2_ws/src/localization_performance_modelling/config/benchmark_configurations/localization_grid_benchmark_1.yaml",
                         required=False)
 
     parser.add_argument('-r', dest='base_run_folder',
@@ -50,10 +50,8 @@ def main():
 
     args = parser.parse_args()
     base_run_folder = path.expanduser(args.base_run_folder)
-
     environment_folders = sorted(filter(path.isdir, glob.glob(path.expanduser(args.environment_dataset_folders), recursive=True)))
-
-    grid_benchmark_configuration = path.expanduser(path.join("~/w/ros2_ws/src/localization_performance_modelling/config", "benchmark_configurations", args.grid_benchmark_configuration))
+    grid_benchmark_configuration = path.expanduser(args.grid_benchmark_configuration)
 
     execute_grid_benchmark(benchmark_run_object=BenchmarkRun,
                            grid_benchmark_configuration=grid_benchmark_configuration,
