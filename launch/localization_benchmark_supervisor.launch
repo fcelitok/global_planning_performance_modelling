@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+  <arg name="params_file"/>
+  <arg name="output" default="screen"/>
+
+  <node name="localization_benchmark_supervisor"
+        pkg="localization_performance_modelling"
+        type="localization_benchmark_supervisor"
+        output="$(arg output)"
+        required="true">
+    <rosparam file="$(arg params_file)"/>
+  </node>
+
+</launch>

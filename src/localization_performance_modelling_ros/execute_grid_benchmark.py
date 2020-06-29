@@ -7,11 +7,11 @@ import glob
 import argparse
 from os import path
 
-from localization_performance_modelling.localization_benchmark_run import BenchmarkRun
+from localization_performance_modelling_ros.localization_benchmark_run import BenchmarkRun
 from performance_modelling_py.benchmark_execution.grid_benchmarking import execute_grid_benchmark
 
 
-def main():
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description='Execute the benchmark')
 
     parser.add_argument('-e', dest='environment_dataset_folders',
@@ -23,7 +23,7 @@ def main():
     parser.add_argument('-c', dest='grid_benchmark_configuration',
                         help='Yaml file with the configuration of the benchmark.',
                         type=str,
-                        default="~/w/ros2_ws/src/localization_performance_modelling/config/benchmark_configurations/localization_grid_benchmark_1.yaml",
+                        default="~/w/catkin_ws/src/localization_performance_modelling/config/benchmark_configurations/localization_grid_benchmark_1.yaml",
                         required=False)
 
     parser.add_argument('-r', dest='base_run_folder',
@@ -50,7 +50,7 @@ def main():
 
     args = parser.parse_args()
     base_run_folder = path.expanduser(args.base_run_folder)
-    environment_folders = sorted(filter(path.isdir, glob.glob(path.expanduser(args.environment_dataset_folders), recursive=True)))
+    environment_folders = sorted(filter(path.isdir, glob.glob(path.expanduser(args.environment_dataset_folders))))
     grid_benchmark_configuration = path.expanduser(args.grid_benchmark_configuration)
 
     execute_grid_benchmark(benchmark_run_object=BenchmarkRun,
