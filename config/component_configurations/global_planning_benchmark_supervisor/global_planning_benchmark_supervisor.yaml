@@ -9,16 +9,8 @@ write_estimated_poses_period: 0.1
 robot_radius: 0.2
 
 # topic names
-scan_topic: /scan
-estimated_pose_correction_topic: /amcl_pose
 ground_truth_pose_topic: /ground_truth/base_footprint/odom
 initial_pose_topic: /initialpose
-
-# service names
-pause_physics_service: /gazebo/pause_physics
-unpause_physics_service: /gazebo/unpause_physics
-set_entity_state_service: /gazebo/set_model_state
-global_localization_service: /global_localization
 
 # action names
 navigate_to_pose_action: /move_base

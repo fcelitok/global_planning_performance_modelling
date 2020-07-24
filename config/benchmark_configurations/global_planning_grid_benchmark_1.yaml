@@ -1,0 +1,14 @@
+components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
+#gazebo_model_path_env_var: [~/turtlebot3_melodic_ws/src/turtlebot3_simulations/turtlebot3_gazebo/models/]      #we are not using simulation   
+#gazebo_plugin_path_env_var: [~/turtlebot3_melodic_ws/build/gazebo_plugins/]                                    #we are not using simulation
+
+supervisor_component: global_planning_benchmark_supervisor
+
+components_configuration:
+  supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml
+#  amcl: amcl/amcl.yaml                                                                                         #we are not using simulation
+  move_base: {NavFn: move_base/move_base_tb3.yaml,GlobalPlanner: move_base/globalPlanner.yaml}
+  rviz: rviz/default_view.rviz
+
+combinatorial_parameters:
+  global_planner_name: [NavFn, GlobalPlanner]

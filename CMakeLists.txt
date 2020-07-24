@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(localization_performance_modelling)
+project(global_planning_performance_modelling)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy

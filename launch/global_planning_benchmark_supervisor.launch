@@ -4,9 +4,9 @@
   <arg name="params_file"/>
   <arg name="output" default="screen"/>
 
-  <node name="localization_benchmark_supervisor"
-        pkg="localization_performance_modelling"
-        type="localization_benchmark_supervisor"
+  <node name="global_planning_benchmark_supervisor"
+        pkg="global_planning_performance_modelling"
+        type="global_planning_benchmark_supervisor"
         output="$(arg output)"
         required="true">
     <rosparam file="$(arg params_file)"/>

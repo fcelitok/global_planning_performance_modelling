@@ -3,6 +3,7 @@
 
     <arg name="params_file" />
     <arg name="output" default="screen" />
+    <arg name="map_file" />
 
     <node name="move_base"
           pkg="move_base"
@@ -11,5 +12,8 @@
           output="$(arg output)" >
         <rosparam file="$(arg params_file)" />
     </node>
+
+  <!-- Map server -->
+  <node pkg="map_server" name="map_server" type="map_server" args="$(arg map_file)"/>
 
 </launch>

@@ -1,0 +1,13 @@
+<launch>
+  <arg name="robot_realistic_urdf_file"/>
+
+   <param name="robot_realistic_urdf" textfile="$(arg robot_realistic_urdf_file)"/>
+  <node name="robot_state_publisher_realistic"
+        pkg="robot_state_publisher"
+        type="robot_state_publisher">
+    <remap from="robot_description" to="robot_realistic_urdf" />
+    <remap from="joint_states" to="joint_states_realistic" />
+  </node>
+
+
+</launch>

@@ -7,7 +7,7 @@ import glob
 import argparse
 from os import path
 
-from localization_performance_modelling_ros.localization_benchmark_run import BenchmarkRun
+from global_planning_performance_modelling_ros.global_planning_benchmark_run import BenchmarkRun
 from performance_modelling_py.benchmark_execution.grid_benchmarking import execute_grid_benchmark
 
 
@@ -17,13 +17,13 @@ if __name__ == '__main__':
     parser.add_argument('-e', dest='environment_dataset_folders',
                         help='Dataset folders containg the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
                         type=str,
-                        default="~/ds/performance_modelling/test_datasets/dataset/*",
+                        default="~/ds/performance_modelling/test_datasets/dataset/7A-2",
                         required=False)
 
     parser.add_argument('-c', dest='grid_benchmark_configuration',
                         help='Yaml file with the configuration of the benchmark.',
                         type=str,
-                        default="~/w/catkin_ws/src/localization_performance_modelling/config/benchmark_configurations/localization_grid_benchmark_1.yaml",
+                        default="~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/benchmark_configurations/global_planning_grid_benchmark_1.yaml",
                         required=False)
 
     parser.add_argument('-r', dest='base_run_folder',
@@ -60,3 +60,4 @@ if __name__ == '__main__':
                            num_runs=args.num_runs,
                            headless=args.headless,
                            show_ros_info=args.show_ros_info)
+    

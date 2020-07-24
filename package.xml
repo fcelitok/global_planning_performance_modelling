@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>localization_performance_modelling</name>
+  <name>global_planning_performance_modelling</name>
   <version>0.1.0</version>
   <description>This is my ROS python package.</description>
 
