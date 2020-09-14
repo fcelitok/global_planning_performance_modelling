@@ -1,11 +1,9 @@
-base_local_planner: dwa_local_planner/DWAPlannerROS
-
 base_global_planner: global_planner/GlobalPlanner  # The name of the plugin for the local planner to use with move_base see pluginlib documentation for more details on plugins. This plugin must adhere to the nav_core::BaseLocalPlanner interface specified in the nav_core package.
 
 ## global planner configuration
 # http://wiki.ros.org/global_planner#Parameters
 GlobalPlanner:
-  allow_unknown: true  # default: true  # Specifies whether or not to allow the planner to create plans that traverse unknown space. NOTE: if you are using a layered costmap_2d costmap with a voxel or obstacle layer, you must also set the track_unknown_space param for that layer to be true, or it will convert all your unknown space to free space (which planner will then happily go right through).
+  allow_unknown: true  # default: true # Specifies whether or not to allow the planner to create plans that traverse unknown space. NOTE: if you are using a layered costmap_2d costmap with a voxel or obstacle layer, you must also set the track_unknown_space param for that layer to be true, or it will convert all your unknown space to free space (which planner will then happily go right through).
   default_tolerance: 0.0  # default: 0.0  # A tolerance on the goal point for the planner. The planner will attempt to create a plan that is as close to the specified goal as possible but no further than default_tolerance away.
   use_dijkstra: true   # default: true  # If true, use dijkstra's algorithm. Otherwise, A*.
   use_quadratic: true  # default: true  # If true, use the quadratic approximation of the potential. Otherwise, use a simpler calculation.
@@ -17,6 +15,8 @@ GlobalPlanner:
   publish_potential: true  # default: true  # Publish Potential Costmap (dynamic reconfigure)
   orientation_mode: 0  # default: 0  # How to set the orientation of each point (None=0, Forward=1, Interpolate=2, ForwardThenInterpolate=3, Backward=4, Leftward=5, Rightward=6) (dynamic reconfigure)
   orientation_window_size: 1  # default: 1  # What window to use to determine the orientation based on the position derivative specified by the orientation mode (dynamic reconfigure)
+
+base_local_planner: dwa_local_planner/DWAPlannerROS
 
 shutdown_costmaps: false
 controller_frequency: 5.0

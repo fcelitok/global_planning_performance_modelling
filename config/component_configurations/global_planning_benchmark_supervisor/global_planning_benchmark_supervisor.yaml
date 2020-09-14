@@ -11,12 +11,16 @@ robot_radius: 0.2
 # topic names
 ground_truth_pose_topic: /ground_truth/base_footprint/odom
 initial_pose_topic: /initialpose
+goal_pose_topic: /move_base/goal
+navFnROS_topic: /move_base/NavfnROS/plan
+global_planner_topic: /move_base/GlobalPlanner/plan
 
 # action names
 navigate_to_pose_action: /move_base
 
 # frame names
 fixed_frame: map
+child_frame: base_footprint
 robot_base_frame: base_link_realistic
 
 # gazebo entity names

@@ -12,12 +12,12 @@ from performance_modelling_py.benchmark_execution.grid_benchmarking import execu
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description='Execute the benchmark')
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description='Execute the benchmark') #this module makes it easy to write user-friendly command-line interfaces.
 
     parser.add_argument('-e', dest='environment_dataset_folders',
                         help='Dataset folders containg the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
                         type=str,
-                        default="~/ds/performance_modelling/test_datasets/dataset/7A-2",
+                        default="~/ds/performance_modelling/test_datasets/dataset/airlab", #when used ~/ds/performance_modelling/test_datasets/dataset/* it will take all environmetns
                         required=False)
 
     parser.add_argument('-c', dest='grid_benchmark_configuration',
