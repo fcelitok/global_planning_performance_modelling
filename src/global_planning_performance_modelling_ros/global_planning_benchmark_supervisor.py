@@ -386,13 +386,20 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def execution_time_Callback(self, i_point, time_message, time_message2):
         msg_time = time_message2 - time_message
-        initial_one = i_point
+        xposition = self.initial_pose_dict[i_point].position.x
+        yposition = self.initial_pose_dict[i_point].position.y
         goal_one = self.initial_goal_dict[i_point]
+        xpos = self.goal_pose_dict[goal_one].position.x
+        ypos = self.goal_pose_dict[goal_one].position.y
         with open(self.execution_time_file_path, 'a') as time_file:
             time_file.write(
-                "{i_point}, {g_point}, {t}\n".format(
-                    i_point=initial_one,
+                "{i_point}, {x_position}, {y_position}, {g_point}, {x_pos}, {y_pos}, {t}\n".format(
+                    i_point=i_point,
+                    x_position=xposition,
+                    y_position=yposition,
                     g_point=goal_one,
+                    x_pos=xpos,
+                    y_pos=ypos,
                     t=msg_time,
                 ))
 
