@@ -68,6 +68,7 @@ class GlobalPlanningBenchmarkSupervisor:
         initial_pose_topic = rospy.get_param('~initial_pose_topic')  # /initialpose
         navFn_topic = rospy.get_param('~navFnROS_topic')  # /move_base/NavfnROS/plan
         global_planner_topic = rospy.get_param('~global_planner_topic')  # /move_base/GlobalPlanner/plan
+        sbpl_lattice_planner_topic = rospy.get_param('~sbpl_lattice_planner_topic') # /move_base/SBPLLatticePlanner/plan
         goal_pose_topic = rospy.get_param('~goal_pose_topic')  # /move_base/goal
         navigate_to_pose_action = rospy.get_param('~navigate_to_pose_action')  # /move_base
         self.fixed_frame = rospy.get_param('~fixed_frame')
@@ -128,6 +129,7 @@ class GlobalPlanningBenchmarkSupervisor:
         rospy.Subscriber(initial_pose_topic, PoseWithCovarianceStamped, self.initial_pose_Callback)
         rospy.Subscriber(navFn_topic, Path, self.pathCallback)
         rospy.Subscriber(global_planner_topic, Path, self.pathCallback)
+        rospy.Subscriber(sbpl_lattice_planner_topic, Path, self.pathCallback)
         rospy.Subscriber(goal_pose_topic, MoveBaseActionGoal, self.goal_Callback)
         # you can add your subscribers here
         # you can add subscriber path here
@@ -214,6 +216,7 @@ class GlobalPlanningBenchmarkSupervisor:
             self.goal_pose_dict[farhest_node] = goal_node_pose
 
     def active_cb(self):
+        self.execution_timer = rospy.Time.now().to_time()
         rospy.loginfo("Goal pose " + str(self.goal_sent_count) + " is now being processed by the Action Server...")
 
     def done_cb(self, status, result):
@@ -282,8 +285,7 @@ class GlobalPlanningBenchmarkSupervisor:
         maxGoalPose.target_pose.header.stamp = rospy.Time.now()
         maxGoalPose.target_pose.pose = goal_node_pose1
 
-        # self.navigate_to_pose_action_client.send_goal_and_wait(maxGoalPose,execute_timeout=rospy.Duration.from_sec(1.0)),
-        self.execution_timer = rospy.Time.now().to_time()
+        # self.navigate_to_pose_action_client.send_goal_and_wait(maxGoalPose,execute_timeout=rospy.Duration.from_sec(1.0)),        
         self.navigate_to_pose_action_client.send_goal(maxGoalPose, done_cb=self.done_cb, active_cb=self.active_cb)
         self.write_event('target_pose_set')
         # self.navigate_to_pose_action_client.wait_for_result(rospy.Duration.from_sec(1.0))
@@ -318,8 +320,8 @@ class GlobalPlanningBenchmarkSupervisor:
         else:
             print_error("current position farther from goal position than tolerance")
 
-        # if  self.goal_sent_count == len(self.initial_goal_dict):
-        #    rospy.signal_shutdown("run_completed")
+        if  self.goal_sent_count == len(self.initial_goal_dict):
+            rospy.signal_shutdown("run_completed")
 
     def tfTimerCallback(self, event):
         self.transformStamped.header.stamp = rospy.Time.now()
@@ -327,11 +329,12 @@ class GlobalPlanningBenchmarkSupervisor:
         # print(event)
 
     def pathCallback(self, pathMessage):
-        if pathMessage.header.seq % 2 == 1:
+        self.execution_timer2 = rospy.Time.now().to_time()
+        #if pathMessage.header.seq % 2 == 0:
+        if not self.path_recieve:
             self.pathCounter += 1
             # print("sendign path message ", pathMessage)
             print("Path message recieved")
-            self.execution_timer2 = rospy.Time.now().to_time()
             self.execution_time_Callback(self.sended_initial_node, self.execution_timer,self.execution_timer2)
             self.path_recieve = True
             self.latest_path = pathMessage
@@ -386,6 +389,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def execution_time_Callback(self, i_point, time_message, time_message2):
         msg_time = time_message2 - time_message
+        rospy.loginfo("Global Planning execution time: " + str(msg_time))
         xposition = self.initial_pose_dict[i_point].position.x
         yposition = self.initial_pose_dict[i_point].position.y
         goal_one = self.initial_goal_dict[i_point]

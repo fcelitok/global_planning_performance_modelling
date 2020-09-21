@@ -14,6 +14,7 @@ initial_pose_topic: /initialpose
 goal_pose_topic: /move_base/goal
 navFnROS_topic: /move_base/NavfnROS/plan
 global_planner_topic: /move_base/GlobalPlanner/plan
+sbpl_lattice_planner_topic: /move_base/SBPLLatticePlanner/plan 
 
 # action names
 navigate_to_pose_action: /move_base

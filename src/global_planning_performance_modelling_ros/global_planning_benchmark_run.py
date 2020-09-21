@@ -7,6 +7,7 @@ import os
 import shutil
 import traceback
 
+import rospy
 import yaml
 from xml.etree import ElementTree as et
 import time
@@ -171,9 +172,12 @@ class BenchmarkRun(object):
         # set gazebo's environment variables
         #os.environ['GAZEBO_MODEL_PATH'] = self.gazebo_model_path_env_var
         #os.environ['GAZEBO_PLUGIN_PATH'] = self.gazebo_plugin_path_env_var
+        
+        # launch roscore and setup a node to monitor ros
+        roscore.launch()
+        rospy.init_node("benchmark_monitor", anonymous=True)
 
         # launch components
-        roscore.launch()
         rviz.launch()
         navigation.launch()
         supervisor.launch()
@@ -183,6 +187,12 @@ class BenchmarkRun(object):
         self.log(event="waiting_supervisor_finish")
         supervisor.wait_to_finish()
         self.log(event="supervisor_shutdown")
+
+        # check if the rosnode is still ok, otherwise the ros infrastructure has been shutdown and the benchmark is aborted
+        if rospy.is_shutdown():
+            print_error("execute_run: supervisor finished by ros_shutdown")
+            self.aborted = True
+
 
         # shut down components
         navigation.shutdown()
