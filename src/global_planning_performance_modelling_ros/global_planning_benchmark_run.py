@@ -22,17 +22,17 @@ from global_planning_performance_modelling_ros.metrics import compute_metrics
 class BenchmarkRun(object):
     def __init__(self, run_id, run_output_folder, benchmark_log_path, environment_folder, parameters_combination_dict, benchmark_configuration_dict, show_ros_info, headless):
         # print("PRINT:\n")
-        # print(run_id,'\n')                        #exmaple: 341
-        # print(run_output_folder,'\n')             #exmaple: /home/furkan/ds/performance_modelling/output/test_localization/run_341
+        # print(run_id,'\n')                        #exmaple: 0
+        # print(run_output_folder,'\n')             #exmaple: /home/furkan/ds/performance_modelling/output/test_localization/session_2020-09-30_17-09-01_964405_run_000000000
         # print(benchmark_log_path,'\n')            #exmaple: /home/furkan/ds/performance_modelling/output/test_localization/benchmark_log.csv
         # print(environment_folder,'\n')            #exmaple: /home/furkan/ds/performance_modelling/test_datasets/dataset/airlab
-        # print(parameters_combination_dict,'\n')   #exmaple: {'global_planner_name': 'GlobalPlanner'}
+        # print(parameters_combination_dict,'\n')   #exmaple: {'use_dijkstra': True, 'environment_name': 'airlab', 'global_planner_name': 'GlobalPlanner'}
         # print(benchmark_configuration_dict,'\n')  #exmaple: {'components_configurations_folder': '~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations', 
-        #                                                      'supervisor_component': 'global_planning_benchmark_supervisor', 
-        #                                                      'components_configuration': {'move_base': {'NavFn': 'move_base/move_base_tb3.yaml', 'GlobalPlanner': 'move_base/globalPlanner.yaml'}, 
-        #                                                      'supervisor': 'global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml', 
-        #                                                      'rviz': 'rviz/default_view.rviz'}, 
-        #                                                      'combinatorial_parameters': {'global_planner_name': ['NavFn', 'GlobalPlanner']}} 
+        #                                           #          'supervisor_component': 'global_planning_benchmark_supervisor', 
+        #                                           #          'components_configuration': {'move_base': {'GlobalPlanner': 'move_base/globalPlanner.yaml'}, 
+        #                                           #                                       'supervisor': 'global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml', 
+        #                                           #                                       'rviz': 'rviz/default_view.rviz'}, 
+        #                                           #          'combinatorial_parameters': {'use_dijkstra': [True, False], 'environment_name': ['airlab'], 'global_planner_name': ['GlobalPlanner']}} 
         # print(show_ros_info,'\n')                 #exmaple: False
         # print(headless,'\n')                      #exmaple: False 
 
@@ -51,6 +51,7 @@ class BenchmarkRun(object):
         
         #take run parameters from parameters_combination_dictionary
         global_planner_name = self.run_parameters['global_planner_name']
+        #use_dijkstra_name = self.run_parameters['use_dijkstra']
         #print(global_planner_name) #first printing NavFn then printing GlobalPlanner
 
         # run variables
@@ -152,8 +153,8 @@ class BenchmarkRun(object):
         }
         navigation_params = {
             'params_file': self.move_base_configuration_path,
-            'map_file':self.map_info_file_path,
-            'output' : "log"
+            'map_file': self.map_info_file_path,
+            'output' : "screen"
         }
         supervisor_params = {
             'params_file': self.supervisor_configuration_path,

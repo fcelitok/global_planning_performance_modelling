@@ -69,6 +69,7 @@ class GlobalPlanningBenchmarkSupervisor:
         navFn_topic = rospy.get_param('~navFnROS_topic')  # /move_base/NavfnROS/plan
         global_planner_topic = rospy.get_param('~global_planner_topic')  # /move_base/GlobalPlanner/plan
         sbpl_lattice_planner_topic = rospy.get_param('~sbpl_lattice_planner_topic') # /move_base/SBPLLatticePlanner/plan
+        ompl_planner_topic = rospy.get_param('~ompl_planner_topic')
         goal_pose_topic = rospy.get_param('~goal_pose_topic')  # /move_base/goal
         navigate_to_pose_action = rospy.get_param('~navigate_to_pose_action')  # /move_base
         self.fixed_frame = rospy.get_param('~fixed_frame')
@@ -130,6 +131,7 @@ class GlobalPlanningBenchmarkSupervisor:
         rospy.Subscriber(navFn_topic, Path, self.pathCallback)
         rospy.Subscriber(global_planner_topic, Path, self.pathCallback)
         rospy.Subscriber(sbpl_lattice_planner_topic, Path, self.pathCallback)
+        rospy.Subscriber(ompl_planner_topic, Path, self.pathCallback)
         rospy.Subscriber(goal_pose_topic, MoveBaseActionGoal, self.goal_Callback)
         # you can add your subscribers here
         # you can add subscriber path here

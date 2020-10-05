@@ -6,13 +6,20 @@ supervisor_component: global_planning_benchmark_supervisor
 
 components_configuration:
   supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml
-  move_base: {NavFn: move_base/move_base_tb3.yaml, GlobalPlanner: move_base/globalPlanner.yaml}
-#  move_base: {ARAplanner: move_base/sbpl_lattice_planner_tb3.yaml, NavFn: move_base/move_base_tb3.yaml, GlobalPlanner: move_base/globalPlanner.yaml}
-#  move_base: {ADplanner: move_base/sbpl_lattice_planner_tb3_adplan.yaml, ARAplanner: move_base/sbpl_lattice_planner_tb3.yaml, NavFn: move_base/move_base_tb3.yaml, GlobalPlanner: move_base/globalPlanner.yaml}
+  move_base: {OMPL: move_base/ompl_planner.yaml}
+#  move_base: {NavFn: move_base/navfnPlanner.yaml, GlobalPlanner: move_base/globalPlanner.yaml}
+#  move_base: {GlobalPlanner: move_base/globalPlanner.yaml}
+#  move_base: {ARAplanner: move_base/sbpl_lattice_planner_tb3.yaml, NavFn: move_base/navfnPlanner.yaml, GlobalPlanner: move_base/globalPlanner.yaml}
+#  move_base: {ADplanner: move_base/sbpl_lattice_planner_tb3_adplan.yaml, ARAplanner: move_base/sbpl_lattice_planner_tb3.yaml, NavFn: move_base/navfnPlanner.yaml, GlobalPlanner: move_base/globalPlanner.yaml}
+#  move_base: {OMPL: move_base/ompl_planner.yaml, ADplanner: move_base/sbpl_lattice_planner_tb3_adplan.yaml, ARAplanner: move_base/sbpl_lattice_planner_tb3.yaml, NavFn: move_base/navfnPlanner.yaml, GlobalPlanner: move_base/globalPlanner.yaml}
   rviz: rviz/default_view.rviz
 
 combinatorial_parameters:        #you can write your combinatory parameters here as an dict in grid_benchmarking.py is taking them
-  global_planner_name: [NavFn, GlobalPlanner]
+  global_planner_name: [OMPL]
+#  global_planner_name: [NavFn, GlobalPlanner]
+#  global_planner_name: [GlobalPlanner]
+#  use_dijkstra: [true, false]
 #  global_planner_name: [ARAplanner, NavFn, GlobalPlanner]
 #  global_planner_name: [ADplanner, ARAplanner, NavFn, GlobalPlanner]
+#  global_planner_name: [OMPL, ADplanner, ARAplanner, NavFn, GlobalPlanner]
 # for example you can add local_planner_name: [xx, yy, zz]
