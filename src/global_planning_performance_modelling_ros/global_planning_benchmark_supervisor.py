@@ -69,7 +69,7 @@ class GlobalPlanningBenchmarkSupervisor:
         navFn_topic = rospy.get_param('~navFnROS_topic')  # /move_base/NavfnROS/plan
         global_planner_topic = rospy.get_param('~global_planner_topic')  # /move_base/GlobalPlanner/plan
         sbpl_lattice_planner_topic = rospy.get_param('~sbpl_lattice_planner_topic') # /move_base/SBPLLatticePlanner/plan
-        ompl_planner_topic = rospy.get_param('~ompl_planner_topic')
+        ompl_planner_topic = rospy.get_param('~ompl_planner_topic')  # /move_base/OmplGlobalPlanner/plan
         goal_pose_topic = rospy.get_param('~goal_pose_topic')  # /move_base/goal
         navigate_to_pose_action = rospy.get_param('~navigate_to_pose_action')  # /move_base
         self.fixed_frame = rospy.get_param('~fixed_frame')
@@ -85,14 +85,14 @@ class GlobalPlanningBenchmarkSupervisor:
         self.ground_truth_map_info_path = rospy.get_param('~ground_truth_map_info_path')
 
         # run parameters
-        run_timeout = rospy.get_param('~run_timeout')  # when the robot stucked we can use time out so according to time out we can finish the run
+        run_timeout = rospy.get_param('~run_timeout')  # when the robot stacked we can use time out so according to time out we can finish the run
         # self.waypoint_timeout = rospy.get_param('~waypoint_timeout')
         self.ground_truth_map = ground_truth_map.GroundTruthMap(self.ground_truth_map_info_path)
 
         # run variables
         self.initial_pose = None
         self.goal_sent_count = 0
-        self.path_recieve = False
+        self.path_receive = False
         self.pathCounter = 0
         self.initial_pose_counter = 1
         self.goal_tolerance = 0.2
@@ -132,7 +132,7 @@ class GlobalPlanningBenchmarkSupervisor:
         rospy.Subscriber(global_planner_topic, Path, self.pathCallback)
         rospy.Subscriber(sbpl_lattice_planner_topic, Path, self.pathCallback)
         rospy.Subscriber(ompl_planner_topic, Path, self.pathCallback)
-        rospy.Subscriber(goal_pose_topic, MoveBaseActionGoal, self.goal_Callback)
+        rospy.Subscriber(goal_pose_topic, MoveBaseActionGoal, self.goal_callback)
         # you can add your subscribers here
         # you can add subscriber path here
 
@@ -148,13 +148,12 @@ class GlobalPlanningBenchmarkSupervisor:
         self.broadcaster = tf2_ros.TransformBroadcaster()
         self.transformStamped = geometry_msgs.msg.TransformStamped()
 
-        
         for initial_node_key, goal_node_value in self.initial_goal_dict.items():
             # send initial node and goal node
             self.start_run(initial_node=initial_node_key, goal_node=goal_node_value)
             rospy.sleep(1.0)
 
-        # #only one node send part just for debuging  (close upper for loop)
+        # #only one node send part just for debugging  (close upper for loop)
         # initial_node_key = list(self.initial_goal_dict)[0]
         # goal_node_key = self.initial_goal_dict[initial_node_key]
         # self.start_run(initial_node = initial_node_key , goal_node = goal_node_key)
@@ -165,9 +164,8 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # get deleaved reduced Voronoi graph from ground truth map)
         # (in here we are taking a list from voronoi graph we will use later it
-        # (but right now we can add only one goal here then we can add volonoi graph after one goal achieved)
-        voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(
-            minimum_radius=2 * self.robot_radius).copy()
+        # (but right now we can add only one goal here then we can add voronoi graph after one goal achieved)
+        voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=2 * self.robot_radius).copy()
         minimum_length_paths = nx.all_pairs_dijkstra_path(voronoi_graph, weight='voronoi_path_distance')
         minimum_length_costs = dict(nx.all_pairs_dijkstra_path_length(voronoi_graph, weight='voronoi_path_distance'))
         costs = defaultdict(dict)
@@ -196,10 +194,10 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # find initial and goal nodes and its pose
         for node in list(voronoi_graph.nodes):
-            # node our initial poits and we will find farthest node
-            farhest_node = max(costs[node].items(), key=operator.itemgetter(1))[0]
-            max_node_cost = costs[node][farhest_node]
-            # print("Max Costs[{}][{}] = {}".format(node, farhest_node, max_node_cost))
+            # node our initial points and we will find farthest node
+            farthest_node = max(costs[node].items(), key=operator.itemgetter(1))[0]
+            max_node_cost = costs[node][farthest_node]
+            # print("Max Costs[{}][{}] = {}".format(node, farthest_node, max_node_cost))
 
             initial_node_pose = Pose()
             initial_node_pose.position.x, initial_node_pose.position.y = voronoi_graph.nodes[node]['vertex']
@@ -208,14 +206,14 @@ class GlobalPlanningBenchmarkSupervisor:
             # print("node number:", node, "INITIAL:" , initial_node_pose_stamped)
 
             goal_node_pose = Pose()
-            goal_node_pose.position.x, goal_node_pose.position.y = voronoi_graph.nodes[farhest_node]['vertex']
+            goal_node_pose.position.x, goal_node_pose.position.y = voronoi_graph.nodes[farthest_node]['vertex']
             q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
             goal_node_pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
-            # print("fathest node number:",farhest_node, "GOAL:", goal_node_pose)
+            # print("farthest node number:",farthest_node, "GOAL:", goal_node_pose)
 
-            self.initial_goal_dict[node] = farhest_node
+            self.initial_goal_dict[node] = farthest_node
             self.initial_pose_dict[node] = initial_node_pose
-            self.goal_pose_dict[farhest_node] = goal_node_pose
+            self.goal_pose_dict[farthest_node] = goal_node_pose
 
     def active_cb(self):
         self.execution_timer = rospy.Time.now().to_time()
@@ -245,7 +243,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def start_run(self, initial_node, goal_node):
         print_info("preparing to start run")
-        self.sended_initial_node = initial_node
+        self.sent_initial_node = initial_node
 
         initial_node_pose1 = self.initial_pose_dict[initial_node]
         initial_node_pose_stamped = PoseWithCovarianceStamped()
@@ -269,15 +267,15 @@ class GlobalPlanningBenchmarkSupervisor:
         initial_node_pose_stamped.header.stamp = rospy.Time.now()  # before publishing adding time stamp
         self.initial_pose_publisher.publish(initial_node_pose_stamped)
 
-        
-        rospy.sleep(1.0)
+        rospy.sleep(1.5)
 
         # self.traversal_path_publisher.publish(self.traversal_path_msg)  #traversal path publisher for visualization
 
         self.write_event('run_start')
 
         # goal node send
-        if not self.navigate_to_pose_action_client.wait_for_server(timeout=rospy.Duration.from_sec(5.0)):  # just for control duration time is not important in here
+        if not self.navigate_to_pose_action_client.wait_for_server(
+                timeout=rospy.Duration.from_sec(5.0)):  # just for control duration time is not important in here
             self.write_event('failed_to_communicate_with_navigation_node')
             raise RunFailException("navigate_to_pose action server not available")
 
@@ -296,11 +294,11 @@ class GlobalPlanningBenchmarkSupervisor:
 
         rospy.sleep(0.5)
         while not rospy.is_shutdown():
-            if self.path_recieve:
-                self.path_recieve = False
+            if self.path_receive:
+                self.path_receive = False
                 self.navigate_to_pose_action_client.cancel_all_goals()
                 self.navigate_to_pose_action_client.wait_for_result(rospy.Duration.from_sec(5.0))
-                print_info("PATH RECIEVED")
+                print_info("PATH RECEIVED")
                 break
 
         latest_initial_path_pose = self.latest_path.poses[0]
@@ -332,13 +330,12 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def pathCallback(self, pathMessage):
         self.execution_timer2 = rospy.Time.now().to_time()
-        #if pathMessage.header.seq % 2 == 0:
-        if not self.path_recieve:
+        if not self.path_receive:
             self.pathCounter += 1
-            # print("sendign path message ", pathMessage)
-            print("Path message recieved")
-            self.execution_time_Callback(self.sended_initial_node, self.execution_timer,self.execution_timer2)
-            self.path_recieve = True
+            # print("sending path message ", pathMessage)
+            print("Path message received")
+            self.execution_time_callback(self.sent_initial_node, self.execution_timer, self.execution_timer2)
+            self.path_receive = True
             self.latest_path = pathMessage
             # msg_time = pathMessage.header.stamp.to_sec()
             for pose in pathMessage.poses:
@@ -374,7 +371,7 @@ class GlobalPlanningBenchmarkSupervisor:
                     orientationW=initial_pose_msg.pose.pose.orientation.w
                 ))
 
-    def goal_Callback(self, goal_msg):
+    def goal_callback(self, goal_msg):
         msg_time = goal_msg.header.stamp.to_sec()
         with open(self.goal_pose_file_path, 'a') as goal_file:
             goal_file.write(
@@ -389,7 +386,7 @@ class GlobalPlanningBenchmarkSupervisor:
                     orientationW=goal_msg.goal.target_pose.pose.orientation.w
                 ))
 
-    def execution_time_Callback(self, i_point, time_message, time_message2):
+    def execution_time_callback(self, i_point, time_message, time_message2):
         msg_time = time_message2 - time_message
         rospy.loginfo("Global Planning execution time: " + str(msg_time))
         xposition = self.initial_pose_dict[i_point].position.x

@@ -4,19 +4,19 @@ SBPLLatticePlanner:
   environment_type: XYThetaLattice
   planner_type: ARAPlanner
   allocated_time: 10.0
-  initial_epsilon: 15.0
+  initial_epsilon: 10.0
   forward_search: false
-#  primitive_filename: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim/unicycle_5cm_expensive_turn_in_place_highcost.mprim
+  primitive_filename: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim/unicycle_5cm_expensive_turn_in_place_highcost.mprim
 #  primitive_filename: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim/matlab_primitives/generated_primitives_16_10.mprim
-  primitive_filename: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim/python_motion_primitives/numberofangles_16_7.mprim
+#  primitive_filename: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim/python_motion_primitives/numberofangles_16_7.mprim
 
 footprint_padding: 0.01
 shutdown_costmaps: false
 controller_frequency: 5.0
-planner_patience: 5.0
-controller_patience: 15.0
+planner_patience: 60.0
+controller_patience: 60.0
 conservative_reset_dist: 3.0
-planner_frequency: 0.5
+planner_frequency: 0.0
 oscillation_timeout: 10.0
 oscillation_distance: 0.2
 
@@ -76,7 +76,7 @@ local_costmap:
   obstacle_range: 3.0
   raytrace_range: 3.5
 
-  robot_radius: 0.24
+  robot_radius: 0.2
 
 
   cost_scaling_factor: 5.0
@@ -114,7 +114,7 @@ global_costmap:
   obstacle_range: 3.0
   raytrace_range: 3.5
 
-  robot_radius: 0.24
+  robot_radius: 0.2
 
 
   cost_scaling_factor: 3.0

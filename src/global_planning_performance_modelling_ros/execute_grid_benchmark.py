@@ -10,14 +10,15 @@ from os import path
 from global_planning_performance_modelling_ros.global_planning_benchmark_run import BenchmarkRun
 from performance_modelling_py.benchmark_execution.grid_benchmarking import execute_grid_benchmark
 
-
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description='Execute the benchmark') #this module makes it easy to write user-friendly command-line interfaces.
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                     description='Execute the benchmark')  # this module makes it easy to write user-friendly command-line interfaces.
 
     parser.add_argument('-e', dest='environment_dataset_folders',
-                        help='Dataset folders containg the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
+                        help='Dataset folders contain the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
                         type=str,
-                        default="~/ds/performance_modelling/test_datasets/dataset/airlab", #when used ~/ds/performance_modelling/test_datasets/dataset/* it will take all environmetns
+                        default="~/ds/performance_modelling/test_datasets/dataset/airlab",
+                        # when used ~/ds/performance_modelling/test_datasets/dataset/* it will take all environments
                         required=False)
 
     parser.add_argument('-c', dest='grid_benchmark_configuration',
@@ -37,7 +38,7 @@ if __name__ == '__main__':
                         type=int,
                         default=1,
                         required=False)
-    
+
     parser.add_argument('--ignore-previous-runs', dest='ignore_previous_runs',
                         help='When set the the previous runs in base_run_folder are ignored when counting the param combinations already executed.',
                         action='store_true',
@@ -72,4 +73,3 @@ if __name__ == '__main__':
                            shuffle=not args.no_shuffle,
                            headless=args.headless,
                            show_ros_info=args.show_ros_info)
-    

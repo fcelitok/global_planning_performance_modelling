@@ -48,11 +48,11 @@ class BenchmarkRun(object):
         # environment parameters
         self.environment_folder = environment_folder
         self.map_info_file_path = path.join(environment_folder, "data", "map.yaml")
-        
-        #take run parameters from parameters_combination_dictionary
+
+        # take run parameters from parameters_combination_dictionary
         global_planner_name = self.run_parameters['global_planner_name']
-        #use_dijkstra_name = self.run_parameters['use_dijkstra']
-        #print(global_planner_name) #first printing NavFn then printing GlobalPlanner
+        # use_dijkstra_name = self.run_parameters['use_dijkstra']
+        # print(global_planner_name) #first printing NavFn then printing GlobalPlanner
 
         # run variables
         self.aborted = False
@@ -70,21 +70,21 @@ class BenchmarkRun(object):
         original_move_base_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['move_base'][global_planner_name])
         self.original_rviz_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['rviz'])
         original_robot_urdf_path = path.join(environment_folder, "gazebo", "robot.urdf")
-        
+
 
         # components configuration relative paths
         supervisor_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['supervisor'])
         move_base_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['move_base'][global_planner_name])
         robot_realistic_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_realistic.urdf")
-        #robot_gt_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_gt.urdf")                            #we are not using simulation right now
-        
+        # robot_gt_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_gt.urdf")                            #we are not using simulation right now
+
 
         # components configuration paths in run folder
         self.supervisor_configuration_path = path.join(self.run_output_folder, supervisor_configuration_relative_path)
         self.move_base_configuration_path = path.join(self.run_output_folder, move_base_configuration_relative_path)
         self.robot_realistic_urdf_path = path.join(self.run_output_folder, robot_realistic_urdf_relative_path)
-        #self.robot_gt_urdf_path = path.join(self.run_output_folder, robot_gt_urdf_relative_path)                                  #we are not using simulation right now
-        
+        # self.robot_gt_urdf_path = path.join(self.run_output_folder, robot_gt_urdf_relative_path)                                  #we are not using simulation right now
+
 
         # copy the configuration of the supervisor to the run folder and update its parameters
         with open(original_supervisor_configuration_path) as supervisor_configuration_file:
@@ -117,13 +117,13 @@ class BenchmarkRun(object):
             'supervisor': supervisor_configuration_relative_path,
             'move_base': move_base_configuration_relative_path,
             'robot_realistic_urdf': robot_realistic_urdf_relative_path,
-            #'robot_gt_urdf': robot_gt_urdf_relative_path,
+            # 'robot_gt_urdf': robot_gt_urdf_relative_path,
         }
 
         with open(run_info_file_path, 'w') as run_info_file:
             yaml.dump(run_info_dict, run_info_file, default_flow_style=False)
 
-    def log(self, event):  #/home/furkan/ds/performance_modelling/output/test_localization/benchmark_log.csv -> writing benchmark_log.csv related event 
+    def log(self, event):  # /home/furkan/ds/performance_modelling/output/test_localization/benchmark_log.csv -> writing benchmark_log.csv related event
 
         if not path.exists(self.benchmark_log_path):
             with open(self.benchmark_log_path, 'a') as output_file:
@@ -145,35 +145,35 @@ class BenchmarkRun(object):
         rviz_params = {
             'rviz_config_file': self.original_rviz_configuration_path,
             'headless': self.headless,
-            'output' : "log"
+            'output': "log"
         }
         state_publisher_param = {
             'robot_realistic_urdf_file': self.robot_realistic_urdf_path,
-            'output' : "log"
+            'output': "log"
         }
         navigation_params = {
             'params_file': self.move_base_configuration_path,
             'map_file': self.map_info_file_path,
-            'output' : "screen"
+            'output': "screen"
         }
         supervisor_params = {
             'params_file': self.supervisor_configuration_path,
-            'output' : "screen"
+            'output': "screen"
         }
-        
+
 
         # declare components
         roscore = Component('roscore', 'global_planning_performance_modelling', 'roscore.launch')
-        state_publisher = Component('state_publisher','global_planning_performance_modelling','robot_state_launcher.launch',state_publisher_param)
+        state_publisher = Component('state_publisher', 'global_planning_performance_modelling', 'robot_state_launcher.launch', state_publisher_param)
         rviz = Component('rviz', 'global_planning_performance_modelling', 'rviz.launch', rviz_params)
         navigation = Component('move_base', 'global_planning_performance_modelling', 'move_base.launch', navigation_params)
         supervisor = Component('supervisor', 'global_planning_performance_modelling', 'global_planning_benchmark_supervisor.launch', supervisor_params)
-        #recorder = Component('recorder', 'global_planning_performance_modelling', 'rosbag_recorder.launch', recorder_params)
-       
+        # recorder = Component('recorder', 'global_planning_performance_modelling', 'rosbag_recorder.launch', recorder_params)
+
         # set gazebo's environment variables
-        #os.environ['GAZEBO_MODEL_PATH'] = self.gazebo_model_path_env_var
-        #os.environ['GAZEBO_PLUGIN_PATH'] = self.gazebo_plugin_path_env_var
-        
+        # os.environ['GAZEBO_MODEL_PATH'] = self.gazebo_model_path_env_var
+        # os.environ['GAZEBO_PLUGIN_PATH'] = self.gazebo_plugin_path_env_var
+
         # launch roscore and setup a node to monitor ros
         roscore.launch()
         rospy.init_node("benchmark_monitor", anonymous=True)
@@ -182,8 +182,8 @@ class BenchmarkRun(object):
         rviz.launch()
         navigation.launch()
         supervisor.launch()
-        #recorder.launch()
-        
+        # recorder.launch()
+
         # launch components and wait for the supervisor to finish
         self.log(event="waiting_supervisor_finish")
         supervisor.wait_to_finish()
@@ -199,7 +199,7 @@ class BenchmarkRun(object):
         navigation.shutdown()
         rviz.shutdown()
         roscore.shutdown()
-        #recorder.shutdown()
+        # recorder.shutdown()
         print_info("execute_run: components shutdown completed")
 
         # compute all relevant metrics and visualisations
