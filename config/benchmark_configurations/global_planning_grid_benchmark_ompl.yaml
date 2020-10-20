@@ -1,0 +1,14 @@
+components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
+
+supervisor_component: global_planning_benchmark_supervisor
+
+components_configuration:
+  supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml
+  move_base: move_base/move_base_tb3.yaml
+  move_base_global_planner: move_base/move_base_ompl_global_planner.yaml
+  rviz: rviz/default_view.rviz
+
+combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
+  global_planner_name: [OmplGlobalPlanner]
+  planner_type: [RRTConnect]
+# for example you can add local_planner_name: [xx, yy, zz]

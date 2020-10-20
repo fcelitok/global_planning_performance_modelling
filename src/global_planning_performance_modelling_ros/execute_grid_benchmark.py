@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', dest='grid_benchmark_configuration',
                         help='Yaml file with the configuration of the benchmark.',
                         type=str,
-                        default="~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/benchmark_configurations/global_planning_grid_benchmark_1.yaml",
+                        default="~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/benchmark_configurations/global_planning_grid_benchmark_ompl.yaml",
                         required=False)
 
     parser.add_argument('-r', dest='base_run_folder',

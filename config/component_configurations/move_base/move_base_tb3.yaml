@@ -1,13 +1,4 @@
-base_global_planner: SBPLLatticePlanner
-
-SBPLLatticePlanner:
-  environment_type: XYThetaLattice
-  planner_type: ADPlanner
-  allocated_time: 10.0
-  initial_epsilon: 10.0
-  forward_search: true
-  primitive_filename: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim/unicycle_5cm_expensive_turn_in_place_highcost.mprim
-
+base_local_planner: dwa_local_planner/DWAPlannerROS
 footprint_padding: 0.01
 shutdown_costmaps: false
 controller_frequency: 5.0
@@ -17,10 +8,6 @@ conservative_reset_dist: 3.0
 planner_frequency: 0.0
 oscillation_timeout: 10.0
 oscillation_distance: 0.2
-
-
-
-base_local_planner: dwa_local_planner/DWAPlannerROS
 
 DWAPlannerROS:
 
@@ -66,15 +53,12 @@ DWAPlannerROS:
   publish_traj_pc : true
   publish_cost_grid_pc: true
 
-
-
-
-
 local_costmap:
   obstacle_range: 3.0
   raytrace_range: 3.5
 
   robot_radius: 0.2
+  footprint: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.077, -0.155]]  #for waffle tb3 footprint
 
 
   cost_scaling_factor: 5.0
@@ -107,13 +91,12 @@ local_costmap:
     cost_scaling_factor: 7.5 # default: 10  # A scaling factor to apply to cost values during inflation. The cost function is computed as follows for all cells in the costmap further than the inscribed radius distance and closer than the inflation radius distance away from an actual obstacle: exp(-1.0 * cost_scaling_factor * (distance_from_obstacle - inscribed_radius)) * (costmap_2d::INSCRIBED_INFLATED_OBSTACLE - 1), where costmap_2d::INSCRIBED_INFLATED_OBSTACLE is currently 254. NOTE: since the cost_scaling_factor is multiplied by a negative in the formula, increasing the factor will decrease the resulting cost values.
     inflation_radius: 0.3 # default: 0.55  # The radius in meters to which the map inflates obstacle cost values.
 
-
 global_costmap:
   obstacle_range: 3.0
   raytrace_range: 3.5
 
   robot_radius: 0.2
-
+  footprint: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.077, -0.155]]  #for waffle tb3 footprint
 
   cost_scaling_factor: 3.0
 
@@ -124,12 +107,10 @@ global_costmap:
   publish_frequency: 0.1
   transform_tolerance: 0.5
 
-#  rolling_window: true
   width: 200
   height: 200
-  resolution: 0.1
+  resolution: 0.05
 
-#  static_map: true
   plugins:  # Sequence of plugin specifications, one per layer. Each specification is a dictionary with name and type fields.
     - {name: static_layer, type: "costmap_2d::StaticLayer"}
     - {name: inflation_layer, type: "costmap_2d::InflationLayer"}
@@ -145,3 +126,4 @@ global_costmap:
     enabled: true
     cost_scaling_factor: 7.5 # default: 10  # A scaling factor to apply to cost values during inflation. The cost function is computed as follows for all cells in the costmap further than the inscribed radius distance and closer than the inflation radius distance away from an actual obstacle: exp(-1.0 * cost_scaling_factor * (distance_from_obstacle - inscribed_radius)) * (costmap_2d::INSCRIBED_INFLATED_OBSTACLE - 1), where costmap_2d::INSCRIBED_INFLATED_OBSTACLE is currently 254. NOTE: since the cost_scaling_factor is multiplied by a negative in the formula, increasing the factor will decrease the resulting cost values.
     inflation_radius: 0.3 # default: 0.55  # The radius in meters to which the map inflates obstacle cost values.
+

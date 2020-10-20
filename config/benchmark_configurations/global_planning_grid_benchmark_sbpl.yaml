@@ -1,0 +1,16 @@
+components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
+
+sbpl_primitives_path: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim
+
+supervisor_component: global_planning_benchmark_supervisor
+
+components_configuration:
+  supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml
+  move_base: move_base/move_base_tb3.yaml
+  move_base_global_planner: move_base/move_base_sbpl_lattice_planner.yaml
+  rviz: rviz/default_view.rviz
+
+combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
+  global_planner_name: [SBPLLatticePlanner]
+  sbpl_primitives_name: [unicycle_5cm_expensive_turn_in_place_highcost.mprim]
+  planner_type: [ADPlanner, ARAPlanner]

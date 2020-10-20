@@ -2,6 +2,7 @@
 <launch>
   
     <arg name="params_file" />
+    <arg name="global_planner_params_file" />
     <arg name="output" default="screen" />
     <arg name="map_file" />
 
@@ -11,6 +12,7 @@
           respawn="true"
           output="$(arg output)" >
         <rosparam file="$(arg params_file)" />
+        <rosparam file="$(arg global_planner_params_file)" />
     </node>
 
   <!-- Map server -->
