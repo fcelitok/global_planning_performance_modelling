@@ -1,5 +1,7 @@
 components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
 
+run_timeout : 36000.0
+
 supervisor_component: global_planning_benchmark_supervisor
 
 components_configuration:

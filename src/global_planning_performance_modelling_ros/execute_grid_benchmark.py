@@ -24,13 +24,13 @@ if __name__ == '__main__':
     parser.add_argument('-c', dest='grid_benchmark_configuration',
                         help='Yaml file with the configuration of the benchmark.',
                         type=str,
-                        default="~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/benchmark_configurations/global_planning_grid_benchmark_ompl.yaml",
+                        default="~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/benchmark_configurations/global_planning_grid_benchmark_sbpl.yaml",
                         required=False)
 
     parser.add_argument('-r', dest='base_run_folder',
                         help='Folder in which the result of each run will be placed.',
                         type=str,
-                        default="~/ds/performance_modelling/output/test_localization/",
+                        default="~/ds/performance_modelling/output/test_planning/",
                         required=False)
 
     parser.add_argument('-n', '--num-runs', dest='num_runs',

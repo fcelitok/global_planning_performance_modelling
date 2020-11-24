@@ -1,15 +1,10 @@
 # run parameters
-initial_pose_std_xy: 0.2
-initial_pose_std_theta: 0.2617
-goal_tolerance: 0.4
-run_timeout: 3000.0
-waypoint_timeout: 600
+goal_tolerance: 0.2
+# run_timeout: 36000.0  # make it 
 ps_snapshot_period: 10.0
-write_estimated_poses_period: 0.1
 robot_radius: 0.2
 
 # topic names
-ground_truth_pose_topic: /ground_truth/base_footprint/odom
 initial_pose_topic: /initialpose
 goal_pose_topic: /move_base/goal
 navFnROS_topic: /move_base/NavfnROS/plan

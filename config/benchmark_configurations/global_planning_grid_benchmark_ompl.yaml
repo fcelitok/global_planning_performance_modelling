@@ -1,5 +1,7 @@
 components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
 
+run_timeout : 36000.0
+
 supervisor_component: global_planning_benchmark_supervisor
 
 components_configuration:
@@ -10,5 +12,6 @@ components_configuration:
 
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
   global_planner_name: [OmplGlobalPlanner]
-  planner_type: [RRTConnect]
+  planner_type: [RRTStar, RRTConnect, PRMStar]
+#  lethal_cost: [50, 253]
 # for example you can add local_planner_name: [xx, yy, zz]
