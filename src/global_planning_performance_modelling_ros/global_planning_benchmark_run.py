@@ -23,8 +23,8 @@ class BenchmarkRun(object):
     def __init__(self, run_id, run_output_folder, benchmark_log_path, environment_folder, parameters_combination_dict, benchmark_configuration_dict, show_ros_info, headless):
         # print("PRINT:\n")
         # print(run_id,'\n')                        #exmaple: 0
-        # print(run_output_folder,'\n')             #exmaple: /home/furkan/ds/performance_modelling/output/test_localization/session_2020-09-30_17-09-01_964405_run_000000000
-        # print(benchmark_log_path,'\n')            #exmaple: /home/furkan/ds/performance_modelling/output/test_localization/benchmark_log.csv
+        # print(run_output_folder,'\n')             #exmaple: /home/furkan/ds/performance_modelling/output/test_planning/session_2020-09-30_17-09-01_964405_run_000000000
+        # print(benchmark_log_path,'\n')            #exmaple: /home/furkan/ds/performance_modelling/output/test_planning/benchmark_log.csv
         # print(environment_folder,'\n')            #exmaple: /home/furkan/ds/performance_modelling/test_datasets/dataset/airlab
         # print(parameters_combination_dict,'\n')   #exmaple: {'use_dijkstra': True, 'environment_name': 'airlab', 'global_planner_name': 'GlobalPlanner'}
         # print(benchmark_configuration_dict,'\n')  #exmaple: {'components_configurations_folder': '~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations',
@@ -61,8 +61,8 @@ class BenchmarkRun(object):
             sbpl_primitives_file_path = path.join(sbpl_primitives_directory_path, sbpl_primitives_name)
             planner_type = self.run_parameters['planner_type']
         elif global_planner_name == 'OmplGlobalPlanner':
-            print("Ompl working")
             planner_type = self.run_parameters['planner_type']
+            # lethal_cost = self.run_parameters['lethal_cost']
             # TODO add some parameters for OMPL
         else:
             raise ValueError()
@@ -77,6 +77,9 @@ class BenchmarkRun(object):
         os.mkdir(self.run_output_folder)
         os.mkdir(run_configuration_path)
 
+        # benchmark_configuration_parameters
+        self.run_timeout = self.benchmark_configuration['run_timeout']
+
         # components original configuration paths (inside your workspace path)
         components_configurations_folder = path.expanduser(self.benchmark_configuration['components_configurations_folder'])
         original_supervisor_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['supervisor'])
@@ -90,14 +93,12 @@ class BenchmarkRun(object):
         move_base_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['move_base'])
         move_base_global_planner_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['move_base_global_planner'])
         robot_realistic_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_realistic.urdf")
-        # robot_gt_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_gt.urdf")                            #we are not using simulation right now
 
         # components configuration paths in run folder (inside ds output file path)
         self.supervisor_configuration_path = path.join(self.run_output_folder, supervisor_configuration_relative_path)
         self.move_base_configuration_path = path.join(self.run_output_folder, move_base_configuration_relative_path)
         self.move_base_global_planner_configuration_path = path.join(self.run_output_folder, move_base_global_planner_configuration_relative_path)
         self.robot_realistic_urdf_path = path.join(self.run_output_folder, robot_realistic_urdf_relative_path)
-        # self.robot_gt_urdf_path = path.join(self.run_output_folder, robot_gt_urdf_relative_path)                                  #we are not using simulation right now
 
         # copy the configuration of the supervisor to the run folder and update its parameters
         with open(original_supervisor_configuration_path) as supervisor_configuration_file:
@@ -105,6 +106,7 @@ class BenchmarkRun(object):
         supervisor_configuration['run_output_folder'] = self.run_output_folder
         supervisor_configuration['pid_father'] = os.getpid()
         supervisor_configuration['ground_truth_map_info_path'] = self.map_info_file_path
+        supervisor_configuration['run_timeout'] = self.run_timeout
         if not path.exists(path.dirname(self.supervisor_configuration_path)):
             os.makedirs(path.dirname(self.supervisor_configuration_path))
         with open(self.supervisor_configuration_path, 'w') as supervisor_configuration_file:
@@ -115,6 +117,8 @@ class BenchmarkRun(object):
         print(original_move_base_global_planner_configuration_path)
         with open(original_move_base_global_planner_configuration_path) as move_base_global_planner_configuration_file:
             move_base_global_planner_configuration = yaml.load(move_base_global_planner_configuration_file)
+            move_base_global_planner_configuration['planner_patience'] = self.run_timeout
+            move_base_global_planner_configuration['controller_patience'] = self.run_timeout
 
         if global_planner_name == 'GlobalPlanner':
             move_base_global_planner_configuration['GlobalPlanner']['use_dijkstra'] = use_dijkstra
@@ -126,8 +130,8 @@ class BenchmarkRun(object):
             move_base_global_planner_configuration['SBPLLatticePlanner']['primitive_filename'] = sbpl_primitives_file_path
             # todo
         elif global_planner_name == 'OmplGlobalPlanner':
-            print('ompl planner type added')
             move_base_global_planner_configuration['OmplGlobalPlanner']['planner_type'] = planner_type
+            # move_base_global_planner_configuration['OmplGlobalPlanner']['lethal_cost'] = lethal_cost
         else:
             raise ValueError()
 
@@ -157,13 +161,12 @@ class BenchmarkRun(object):
             'move_base': move_base_configuration_relative_path,
             'move_base_global_planner': move_base_global_planner_configuration_relative_path,
             'robot_realistic_urdf': robot_realistic_urdf_relative_path,
-            # 'robot_gt_urdf': robot_gt_urdf_relative_path,
         }
 
         with open(run_info_file_path, 'w') as run_info_file:
             yaml.dump(run_info_dict, run_info_file, default_flow_style=False)
 
-    def log(self, event):  # /home/furkan/ds/performance_modelling/output/test_localization/benchmark_log.csv -> writing benchmark_log.csv related event
+    def log(self, event):  # /home/furkan/ds/performance_modelling/output/test_planning/benchmark_log.csv -> writing benchmark_log.csv related event
 
         if not path.exists(self.benchmark_log_path):
             with open(self.benchmark_log_path, 'a') as output_file:
@@ -247,7 +250,7 @@ class BenchmarkRun(object):
         # noinspection PyBroadException
         try:
             self.log(event="start_compute_metrics")
-            # compute_metrics(self.run_output_folder)
+            compute_metrics(self.run_output_folder)
         except:
             print_error("failed metrics computation")
             print_error(traceback.format_exc())

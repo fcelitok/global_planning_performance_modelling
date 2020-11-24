@@ -1,6 +1,10 @@
 components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
 
-sbpl_primitives_path: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim
+run_timeout : 36000.0
+
+#sbpl_primitives_path: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim
+#sbpl_primitives_path: /home/furkan/Desktop/all_primitives/sbpl_matlab_mprim
+sbpl_primitives_path: /home/furkan/Desktop/all_primitives/matteo_matlab
 
 supervisor_component: global_planning_benchmark_supervisor
 
@@ -12,5 +16,9 @@ components_configuration:
 
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
   global_planner_name: [SBPLLatticePlanner]
-  sbpl_primitives_name: [unicycle_5cm_expensive_turn_in_place_highcost.mprim]
-  planner_type: [ADPlanner, ARAPlanner]
+#  sbpl_primitives_name: [unicycle_5cm_expensive_turn_in_place_highcost.mprim]
+#  sbpl_primitives_name: [genprim_unicycle_16_prim16_7.mprim]
+#  sbpl_primitives_name: [matteo_mprim_16_10deg_10_version3.mprim, matteo_mprim_16_20deg_10_version3.mprim, matteo_mprim_16_35deg_10_version3.mprim, matteo_mprim_16_90deg_10_version3.mprim]
+  sbpl_primitives_name: [genmprim_unicycle_16_prim7_10.mprim, genmprim_unicycle_16_prim9_10.mprim, genmprim_unicycle_16_prim11_10.mprim]
+  planner_type: [ARAPlanner, ADPlanner]
+#  planner_type: [ANAPlanner]
