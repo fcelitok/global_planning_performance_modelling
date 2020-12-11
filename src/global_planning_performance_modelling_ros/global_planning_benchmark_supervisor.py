@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import time
 import traceback
-from collections import defaultdict, deque
-import copy
-import pickle
-import psutil
+from collections import defaultdict
 import os
 from os import path
 import numpy as np
@@ -15,6 +11,7 @@ import pyquaternion
 import geometry_msgs
 import operator
 import pandas as pd
+import random
 
 import rospy
 import tf2_ros
@@ -22,11 +19,14 @@ from collections import OrderedDict
 from actionlib import SimpleActionClient
 from actionlib_msgs.msg import GoalStatus
 from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction, MoveBaseActionGoal
-from geometry_msgs.msg import PoseWithCovarianceStamped, Pose, Quaternion, PoseStamped, TransformStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped, Pose, Quaternion, PoseStamped
 from nav_msgs.msg import Path
 
 from performance_modelling_py.environment import ground_truth_map
 from performance_modelling_py.utils import backup_file_if_exists, print_info, print_error
+
+from geometry_msgs.msg import Point32
+from sensor_msgs.msg import PointCloud
 
 
 class RunFailException(Exception):
@@ -66,7 +66,7 @@ class GlobalPlanningBenchmarkSupervisor:
         initial_pose_topic = rospy.get_param('~initial_pose_topic')  # /initialpose
         navFn_topic = rospy.get_param('~navFnROS_topic')  # /move_base/NavfnROS/plan
         global_planner_topic = rospy.get_param('~global_planner_topic')  # /move_base/GlobalPlanner/plan
-        sbpl_lattice_planner_topic = rospy.get_param('~sbpl_lattice_planner_topic') # /move_base/SBPLLatticePlanner/plan
+        sbpl_lattice_planner_topic = rospy.get_param('~sbpl_lattice_planner_topic')  # /move_base/SBPLLatticePlanner/plan
         ompl_planner_topic = rospy.get_param('~ompl_planner_topic')  # /move_base/OmplGlobalPlanner/plan
         goal_pose_topic = rospy.get_param('~goal_pose_topic')  # /move_base/goal
         navigate_to_pose_action = rospy.get_param('~navigate_to_pose_action')  # /move_base
@@ -84,7 +84,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.ground_truth_map_info_path = rospy.get_param('~ground_truth_map_info_path')
 
         # run parameters
-        run_timeout = rospy.get_param('~run_timeout')  # when the robot stacked we can use time out so according to time out we can finish the run
+        run_timeout = rospy.get_param('~run_timeout')
         self.ground_truth_map = ground_truth_map.GroundTruthMap(self.ground_truth_map_info_path)
 
         # run variables
@@ -99,14 +99,15 @@ class GlobalPlanningBenchmarkSupervisor:
         self.execution_timer = 0
         self.execution_timer2 = 0
 
-        self.total_paths = 0
+        self.random_points = 1  # define for how many random path will draw
+
+        # self.total_paths = 0
         self.feasible_paths = 0
         self.unfeasible_paths = 0
 
-        self.initial_goal_dict = OrderedDict()  # initial_goal_dict => key: initial node, value: goal node
-        self.initial_pose_dict = OrderedDict()  # initial_pose_dict => key: initial node, value: initial pose
-        self.goal_pose_dict = OrderedDict()  # goal_pose_dict => key: goal node, value: goal pose
+        self.initial_goal_dict = OrderedDict()      # initial_goal_dict => key: initial node, value: goal nodes list
         self.voronoi_distance_dict = OrderedDict()  # voronoi_distance_dict => key : initial node, value: list(goal node, voronoi distance)
+        self.shortest_path_dict = OrderedDict()     # shortest_path_dict => key: initial node, value: key: goal  value: shortest path nodes list
 
         # prepare folder structure
         if not path.exists(self.benchmark_data_folder):
@@ -124,18 +125,28 @@ class GlobalPlanningBenchmarkSupervisor:
         self.voronoi_distance_file_path = path.join(self.plan_output_folder, "voronoi_distance.csv")
         self.euclidean_distance_file_path = path.join(self.plan_output_folder, 'euclidean_distance.csv')
         self.feasibility_rate_file_path = path.join(self.plan_output_folder, 'feasibility_rate.csv')
+        self.mean_passage_width_file_path = path.join(self.plan_output_folder, 'mean_passage_width.csv')
+        self.minimum_passage_width_file_path = path.join(self.plan_output_folder, 'minimum_passage_width.csv')
+        self.mean_normalized_passage_width_file_path = path.join(self.plan_output_folder, 'mean_normalized_passage_width.csv')
         self.init_run_events_file()
-
-        self.voronoi_graph_node_finder()  # finding all initial nodes and goal nodes
-
-        # pandas dataframes for benchmark data   #not useful right now #just hold for example
-        self.execution_time_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'time'])
-        self.voronoi_distance_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'voronoi_distance'])
-        self.euclidean_distance_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'euclidean_distance'])
 
         # setup publishers
         self.initial_pose_publisher = rospy.Publisher(initial_pose_topic, PoseWithCovarianceStamped, queue_size=10)
-        # self.traversal_path_publisher = rospy.Publisher("~/traversal_path", Path, latch=True, queue_size=1) #closed right now #for visualization
+        self.voronoi_publisher = rospy.Publisher('VoronoiPointCloud', PointCloud, queue_size=10)
+        # TODO check path or point cloud
+        # self.voronoi_longest_path_publisher = rospy.Publisher('Longest_voronoi_path', PointCloud, queue_size=10)
+        # self.vor_path_pub = rospy.Publisher('xxx', Path, queue_size=10)
+
+        # pandas dataframes for benchmark data
+        self.execution_time_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'time'])
+        self.voronoi_distance_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'voronoi_distance'])
+        self.euclidean_distance_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'euclidean_distance'])
+        self.feasibility_rate_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'path_feasibility'])
+        self.mean_passage_width_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'mean_passage_width'])
+        self.mean_normalized_passage_width_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'mean_normalized_passage_width'])
+        self.minimum_passage_width_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'minimum_passage_width'])
+
+        self.voronoi_graph_node_finder()  # finding all initial nodes and goal nodes
 
         # setup subscribers
         rospy.Subscriber(navFn_topic, Path, self.pathCallback)
@@ -147,7 +158,9 @@ class GlobalPlanningBenchmarkSupervisor:
         # you can add subscriber path here
 
         # setup action clients
-        self.navigate_to_pose_action_client = SimpleActionClient(navigate_to_pose_action, MoveBaseAction)  # navigate_to_pose_action => /move_base
+        # navigate_to_pose_action => /move_base
+        self.navigate_to_pose_action_client = SimpleActionClient(navigate_to_pose_action, MoveBaseAction)
+        self.navigate_to_pose_action_client.wait_for_server(rospy.Duration.from_sec(0.5))
 
         # setup timers
         rospy.Timer(rospy.Duration.from_sec(run_timeout), self.run_timeout_callback)
@@ -157,27 +170,35 @@ class GlobalPlanningBenchmarkSupervisor:
         self.broadcaster = tf2_ros.TransformBroadcaster()
         self.transformStamped = geometry_msgs.msg.TransformStamped()
 
-        # #only one node send part just for debugging  (close upper for loop)
+        # # only one node send part just for debugging  (close for loop)
         # initial_node_key = list(self.initial_goal_dict)[0]
         # goal_node_key = self.initial_goal_dict[initial_node_key]
-        # self.start_run(initial_node = initial_node_key , goal_node = goal_node_key)
+        # self.start_run(initial_node=initial_node_key, goal_node=goal_node_key)
 
         # send initial node and goal node
+        self.write_event('run_start')
         for initial_node_key, goal_node_value in self.initial_goal_dict.items():
-            self.start_run(initial_node=initial_node_key, goal_node=goal_node_value)
-            rospy.sleep(1.0)
+            for goal_node in goal_node_value:
+                self.start_run(initial_node=initial_node_key, goal_node=goal_node)
+                print(" ")
+                rospy.sleep(1.0)
 
+    # TODO: In ANAPlanner in some points it is sending wrong goal point but for this wrong point it is making path
     # collect all initial nodes and goal nodes in dictionary
     def voronoi_graph_node_finder(self):
         print_info("Entered -> deleaved reduced Voronoi graph from ground truth map")
 
-        # get deleaved reduced Voronoi graph from ground truth map)
-        # (in here we are taking a list from voronoi graph we will use later it
-        # (but right now we can add only one goal here then we can add voronoi graph after one goal achieved)
-        voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=2 * self.robot_radius).copy()
-        self.total_paths = len(voronoi_graph.nodes)
-        minimum_length_paths = nx.all_pairs_dijkstra_path(voronoi_graph, weight='voronoi_path_distance')
-        minimum_length_costs = dict(nx.all_pairs_dijkstra_path_length(voronoi_graph, weight='voronoi_path_distance'))
+        # get deleaved reduced Voronoi graph from ground truth map
+        self.voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=2 * self.robot_radius).copy()
+
+        # get all voronoi graph nodes from ground truth map
+        self.real_voronoi_graph = self.ground_truth_map.voronoi_graph.subgraph(filter(
+            lambda n: self.ground_truth_map.voronoi_graph.nodes[n]['radius'] >= 2 * self.robot_radius,
+            self.ground_truth_map.voronoi_graph.nodes
+        )).copy()
+
+        minimum_length_paths = nx.all_pairs_dijkstra_path(self.voronoi_graph, weight='voronoi_path_distance')
+        minimum_length_costs = dict(nx.all_pairs_dijkstra_path_length(self.voronoi_graph, weight='voronoi_path_distance'))
         costs = defaultdict(dict)
 
         for i, paths_dict in minimum_length_paths:
@@ -188,43 +209,139 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # in case the graph has multiple unconnected components, remove the components with less than two nodes
         too_small_voronoi_graph_components = list(
-            filter(lambda component: len(component) < 2, nx.connected_components(voronoi_graph)))
+            filter(lambda component: len(component) < 2, nx.connected_components(self.voronoi_graph)))
 
         for graph_component in too_small_voronoi_graph_components:
-            voronoi_graph.remove_nodes_from(graph_component)
+            self.voronoi_graph.remove_nodes_from(graph_component)
 
-        if len(voronoi_graph.nodes) < 2:
+        if len(self.voronoi_graph.nodes) < 2:
             self.write_event('insufficient_number_of_nodes_in_deleaved_reduced_voronoi_graph')
             raise RunFailException(
                 "insufficient number of nodes in deleaved_reduced_voronoi_graph, can not generate traversal path")
 
-        # find initial and goal nodes and its pose
-        for node in list(voronoi_graph.nodes):
+        # self.total_paths = len(voronoi_graph.nodes)
+
+        # find initial and goal nodes
+        for node in list(self.voronoi_graph.nodes):
             # node our initial points and we will find farthest node
+            initial_node = node
             farthest_node = max(costs[node].items(), key=operator.itemgetter(1))[0]
-            max_node_cost = costs[node][farthest_node]
             # print("Max Costs[{}][{}] = {}".format(node, farthest_node, max_node_cost))
+            max_node_cost = costs[node][farthest_node]
 
-            initial_node_pose = Pose()
-            initial_node_pose.position.x, initial_node_pose.position.y = voronoi_graph.nodes[node]['vertex']
-            q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
-            initial_node_pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
-            # print("node number:", node, "INITIAL:" , initial_node_pose_stamped)
+            goal_node_list = list()
+            goal_node_list.append(farthest_node)
 
-            goal_node_pose = Pose()
-            goal_node_pose.position.x, goal_node_pose.position.y = voronoi_graph.nodes[farthest_node]['vertex']
-            q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
-            goal_node_pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
-            # print("farthest node number:",farthest_node, "GOAL:", goal_node_pose)
+            # shortest path calculated in real voronoi node for each start and goal point
+            shortest_path = nx.shortest_path(self.real_voronoi_graph, initial_node, farthest_node)
+            # shortest path dictionary hold shortest path with key initial node
+            shortest_path_ord_dict = OrderedDict()
+            shortest_path_ord_dict[farthest_node] = shortest_path
 
-            goal_and_distance_list = []
-            goal_and_distance_list.append(farthest_node)
-            goal_and_distance_list.append(max_node_cost)
+            goal_and_distance_dict = OrderedDict()
+            goal_and_distance_dict[farthest_node] = max_node_cost
 
-            self.initial_goal_dict[node] = farthest_node
-            self.initial_pose_dict[node] = initial_node_pose
-            self.goal_pose_dict[farthest_node] = goal_node_pose
-            self.voronoi_distance_dict[node] = goal_and_distance_list
+            remove_list = [initial_node, farthest_node]
+            # TODO add if for random points
+            random_final_point_list = random.sample(list(set(list(self.voronoi_graph.node)) - set(remove_list)), self.random_points)
+
+            for goal_node in random_final_point_list:
+                goal_node_list.append(goal_node)
+                shortest_path_for_goal = nx.shortest_path(self.real_voronoi_graph, initial_node, goal_node)
+                shortest_path_ord_dict[goal_node] = shortest_path_for_goal    # TODO there is problem in shortest path
+                node_cost_for_goal = costs[initial_node][goal_node]
+                goal_and_distance_dict[goal_node] = node_cost_for_goal
+
+            self.initial_goal_dict[initial_node] = goal_node_list
+            self.shortest_path_dict[initial_node] = shortest_path_ord_dict
+            self.voronoi_distance_dict[initial_node] = goal_and_distance_dict
+
+            node_diameter_list = list()
+            for goal_key, path_nodes in shortest_path_ord_dict.items():
+                for path_node in path_nodes:
+                    node_diameter = self.real_voronoi_graph.nodes[path_node]['radius']*2
+                    node_diameter_list.append(node_diameter)
+                node_diameter_mean = np.mean(node_diameter_list)
+                minimum_node_diameter = min(node_diameter_list)
+                normalized_node_diameter_mean = node_diameter_mean/self.robot_radius
+
+                initial_node_pose, goal_node_pose = self.pose_finder(initial_node, goal_key)
+
+                self.mean_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, node_diameter_mean)
+                self.mean_normalized_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, normalized_node_diameter_mean)
+                self.minimum_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, minimum_node_diameter)
+
+        point = Point32()
+        self.point_cloud = PointCloud()
+        self.point_cloud.header.stamp = rospy.Time.now()
+        self.point_cloud.header.frame_id = 'map'
+        for pose in list(self.real_voronoi_graph.nodes):
+            point.x, point.y = self.real_voronoi_graph.nodes[pose]['vertex']
+            point.z = 0.0
+            self.point_cloud.points.append(Point32(point.x, point.y, point.z))
+
+
+
+
+
+    def pose_finder(self, start_node, final_node):
+
+        initial_node_pose = Pose()
+        initial_node_pose.position.x, initial_node_pose.position.y = self.voronoi_graph.nodes[start_node]['vertex']
+        q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
+        initial_node_pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
+        # print("node number:", node, "INITIAL:" , initial_node_pose_stamped)
+
+        goal_node_pose = Pose()
+        goal_node_pose.position.x, goal_node_pose.position.y = self.voronoi_graph.nodes[final_node]['vertex']
+        q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
+        goal_node_pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
+        # print("farthest node number:",farthest_node, "GOAL:", goal_node_pose)
+
+        return initial_node_pose, goal_node_pose
+
+    def minimum_passage_width_callback(self, i_point, g_point, i_node_pose, g_node_pose, minimum_passage_width):
+        try:
+            self.minimum_passage_width_df = self.minimum_passage_width_df.append({
+                'node_i': i_point,
+                'i_x': i_node_pose.position.x,
+                'i_y': i_node_pose.position.y,
+                'node_g': g_point,
+                'g_x': g_node_pose.position.x,
+                'g_y': g_node_pose.position.y,
+                'minimum_passage_width': minimum_passage_width
+            }, ignore_index=True)
+        except:
+            print_error(traceback.format_exc())
+
+    def mean_passage_width_callback(self, i_point, g_point, i_node_pose, g_node_pose, mean_passage_width):
+        try:
+            self.mean_passage_width_df = self.mean_passage_width_df.append({
+                'node_i': i_point,
+                'i_x': i_node_pose.position.x,
+                'i_y': i_node_pose.position.y,
+                'node_g': g_point,
+                'g_x': g_node_pose.position.x,
+                'g_y': g_node_pose.position.y,
+                'mean_passage_width': mean_passage_width
+            }, ignore_index=True)
+        except:
+            print_error(traceback.format_exc())
+
+    def mean_normalized_passage_width_callback(self, i_point, g_point, i_node_pose, g_node_pose, mean_normalized_passage_width):
+        try:
+            self.mean_normalized_passage_width_df = self.mean_normalized_passage_width_df.append({
+                'node_i': i_point,
+                'i_x': i_node_pose.position.x,
+                'i_y': i_node_pose.position.y,
+                'node_g': g_point,
+                'g_x': g_node_pose.position.x,
+                'g_y': g_node_pose.position.y,
+                'mean_normalized_passage_width': mean_normalized_passage_width
+            }, ignore_index=True)
+        except:
+            print_error(traceback.format_exc())
+
 
     def active_cb(self):
         self.execution_timer = rospy.Time.now().to_time()
@@ -233,41 +350,59 @@ class GlobalPlanningBenchmarkSupervisor:
     def done_cb(self, status, result):
 
         if status == GoalStatus.PREEMPTED:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " received a cancel request after it started executing, and has since completed its execution!")
+            rospy.loginfo("Goal pose " + str(
+                self.goal_send_count) + " received a cancel request after it started executing, and has since completed its execution!")
             rospy.sleep(1.0)
         elif status == GoalStatus.ABORTED:
             rospy.loginfo("Goal pose " + str(self.goal_send_count) + " was aborted by the Action Server")
             self.path_aborted = True
             rospy.sleep(1.0)
         elif status == GoalStatus.PENDING:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " has yet to be processed by the action server")
+            rospy.logwarn("Goal pose " + str(self.goal_send_count) + " has yet to be processed by the action server")
         elif status == GoalStatus.ACTIVE:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " is currently being processed by the action server")
+            rospy.logwarn(
+                "Goal pose " + str(self.goal_send_count) + " is currently being processed by the action server")
         elif status == GoalStatus.SUCCEEDED:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " was achieved successfully by the action server")
+            rospy.logwarn("Goal pose " + str(self.goal_send_count) + " was achieved successfully by the action server")
         elif status == GoalStatus.REJECTED:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " was rejected by the action server without being processed, because the goal was unattainable or invalid")
+            rospy.logwarn("Goal pose " + str(
+                self.goal_send_count) + " was rejected by the action server without being processed, because the goal was unattainable or invalid")
         elif status == GoalStatus.PREEMPTING:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " received a cancel request after it started executing and has not yet completed execution")
+            rospy.logwarn("Goal pose " + str(
+                self.goal_send_count) + " received a cancel request after it started executing and has not yet completed execution")
         elif status == GoalStatus.RECALLING:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " received a cancel request before it started executing but the action server has not yet confirmed that the goal is canceled")
+            rospy.logwarn("Goal pose " + str(
+                self.goal_send_count) + " received a cancel request before it started executing but the action server has not yet confirmed that the goal is canceled")
         elif status == GoalStatus.RECALLED:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " received a cancel request before it started executing and was successfully cancelled")
+            rospy.logwarn("Goal pose " + str(
+                self.goal_send_count) + " received a cancel request before it started executing and was successfully cancelled")
         elif status == GoalStatus.LOST:
-            rospy.loginfo("Goal pose " + str(self.goal_send_count) + " received a cancel request. Goal lost!")
+            rospy.logwarn("Goal pose " + str(self.goal_send_count) + " received a cancel request. Goal lost!")
         else:
             rospy.logerr("There is no GoalStatus")
 
     def start_run(self, initial_node, goal_node):
-        print_info("preparing to start run")
+        print_info("prepare start run for each path ")
+        self.write_event('prepare_start_run_for_each_path')
         self.send_initial_node = initial_node
+        self.send_goal_node = goal_node
 
-        self.voronoi_distance_callback(self.send_initial_node)
+        initial_node_pose, goal_node_pose = self.pose_finder(start_node=initial_node, final_node=goal_node)
 
-        initial_node_pose1 = self.initial_pose_dict[initial_node]
+        self.send_initial_node_pose = initial_node_pose
+        self.send_goal_node_pose = goal_node_pose
+
+        self.voronoi_distance_callback(i_point=initial_node, g_point=goal_node, i_node_pose=initial_node_pose, g_node_pose=goal_node_pose)
+        #self.longest_path_publisher_callback(initial_node)
+
+        self.voronoi_publisher.publish(self.point_cloud)
+        # TODO check plan or pointcloud
+        # self.vor_path_pub.publish(self.my_path)
+        # self.voronoi_longest_path_publisher.publish(self.shortest_path_point_cloud)
+
         initial_node_pose_stamped = PoseWithCovarianceStamped()
         initial_node_pose_stamped.header.frame_id = self.fixed_frame
-        initial_node_pose_stamped.pose.pose = initial_node_pose1
+        initial_node_pose_stamped.pose.pose = initial_node_pose
 
         # tf configuration
         self.transformStamped.header.frame_id = self.fixed_frame  # map -> fixed_frame
@@ -291,21 +426,21 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # self.traversal_path_publisher.publish(self.traversal_path_msg)  #traversal path publisher for visualization
 
-        self.write_event('run_start')
+        self.write_event('start_run_for_each_path')
 
         # goal node send
-        if not self.navigate_to_pose_action_client.wait_for_server(timeout=rospy.Duration.from_sec(5.0)):  # just for control duration time is not important in here
+        if not self.navigate_to_pose_action_client.wait_for_server(
+                timeout=rospy.Duration.from_sec(5.0)):  # just for control duration time is not important in here
             self.write_event('failed_to_communicate_with_navigation_node')
             raise RunFailException("navigate_to_pose action server not available")
 
-        goal_node_pose1 = self.goal_pose_dict[goal_node]
         maxGoalPose = MoveBaseGoal()
         maxGoalPose.target_pose.header.frame_id = self.fixed_frame
         maxGoalPose.target_pose.header.stamp = rospy.Time.now()
-        maxGoalPose.target_pose.pose = goal_node_pose1
+        maxGoalPose.target_pose.pose = goal_node_pose
 
         self.goal_send_count += 1
-        print("counter:{} sending goal node {} ".format(self.goal_send_count, goal_node))
+        print("counter:{}. For initial node {}, sending goal node {} ".format(self.goal_send_count, initial_node, goal_node))
         # self.navigate_to_pose_action_client.send_goal_and_wait(maxGoalPose,execute_timeout=rospy.Duration.from_sec(1.0)),
         self.navigate_to_pose_action_client.send_goal(maxGoalPose, done_cb=self.done_cb, active_cb=self.active_cb)
         self.write_event('target_pose_set')
@@ -314,19 +449,27 @@ class GlobalPlanningBenchmarkSupervisor:
         rospy.sleep(0.5)
         while not rospy.is_shutdown():
             if self.path_receive:
-                self.feasible_paths += 1
                 self.path_receive = False
                 self.path_distance_token = True
+                self.feasible_paths += 1
+                feasibility_token = True
+                self.feasibility_rate(initial_node, goal_node, initial_node_pose, goal_node_pose, feasibility_token)
                 self.navigate_to_pose_action_client.cancel_all_goals()
                 self.navigate_to_pose_action_client.wait_for_result(rospy.Duration.from_sec(5.0))
+                self.write_event('target_pose_reached')
+                self.write_event('finish_run_for_each_path')
                 print_info("PATH RECEIVED")
                 break
             if self.path_aborted:
                 self.path_aborted = False
                 self.aborted_path_counter += 1
                 self.unfeasible_paths += 1
+                feasibility_token = False
+                self.feasibility_rate(initial_node, goal_node, initial_node_pose, goal_node_pose, feasibility_token)
                 self.navigate_to_pose_action_client.cancel_all_goals()
                 self.navigate_to_pose_action_client.wait_for_result(rospy.Duration.from_sec(5.0))
+                self.write_event('target_pose_aborted')
+                self.write_event('finish_run_for_each_path')
                 print_info("PATH ABORTED. Counter: ", self.aborted_path_counter)
                 break
 
@@ -334,26 +477,59 @@ class GlobalPlanningBenchmarkSupervisor:
             self.path_distance_token = False
             latest_initial_path_pose = self.latest_path.poses[0]
             distance_from_initial = np.sqrt(
-                (initial_node_pose1.position.x - latest_initial_path_pose.pose.position.x) ** 2 + (
-                        initial_node_pose1.position.y - latest_initial_path_pose.pose.position.y) ** 2)
+                (initial_node_pose.position.x - latest_initial_path_pose.pose.position.x) ** 2 + (
+                        initial_node_pose.position.y - latest_initial_path_pose.pose.position.y) ** 2)
             print_info("Distance: ", distance_from_initial)
             if distance_from_initial < self.goal_tolerance:
-                self.write_event('starting from initial pose')
+                self.write_event('initial_pose_true')
             else:
+                self.write_event('away_from_initial_pose')
                 print_error("current position farther from initial position than tolerance")
 
             latest_goal_path_pose = self.latest_path.poses[-1]
-            distance_from_goal = np.sqrt((goal_node_pose1.position.x - latest_goal_path_pose.pose.position.x) ** 2 + (
-                    goal_node_pose1.position.y - latest_goal_path_pose.pose.position.y) ** 2)
+            distance_from_goal = np.sqrt((goal_node_pose.position.x - latest_goal_path_pose.pose.position.x) ** 2 + (
+                    goal_node_pose.position.y - latest_goal_path_pose.pose.position.y) ** 2)
             print_info("Distance: ", distance_from_goal)
             if distance_from_goal < self.goal_tolerance:
-                self.write_event('goal pose reached')
+                self.write_event('goal_pose_true')
             else:
+                self.write_event('away_from_goal_pose')
                 print_error("current position farther from goal position than tolerance")
 
-        if self.goal_send_count == len(self.initial_goal_dict):
-            self.feasibility_rate()
+        if self.goal_send_count == len(self.initial_goal_dict)*(self.random_points + 1):
+            self.write_event('run_completed')
             rospy.signal_shutdown("run_completed")
+
+    # def longest_path_publisher_callback(self, initial_node):
+    #
+    #     # self.my_path = Path()
+    #     # self.my_path.header.stamp = rospy.Time.now()
+    #     # self.my_path.header.frame_id = 'map'
+    #     #
+    #     # for goal_key, path_nodes in self.shortest_path_dict[initial_node].items():
+    #     #     for pose2 in path_nodes:
+    #     #
+    #     #         stamped_pose = PoseStamped()
+    #     #         stamped_pose.header.frame_id = 'map'
+    #     #         stamped_pose.header.stamp = rospy.Time.now()
+    #     #         point2 = Point32()
+    #     #         point2.x, point2.y = self.real_voronoi_graph.nodes[pose2]['vertex']
+    #     #         point2.z = 0.0
+    #     #
+    #     #         stamped_pose.pose.position = point2
+    #     #         self.my_path.poses.append(PoseStamped(stamped_pose.header, stamped_pose.pose))
+    #
+    #     point = Point32()
+    #     self.shortest_path_point_cloud = PointCloud()
+    #     self.shortest_path_point_cloud.header.stamp = rospy.Time.now()
+    #     self.shortest_path_point_cloud.header.frame_id = 'map'
+    #
+    #     for goal_key, path_nodes in self.shortest_path_dict[initial_node].items():
+    #         for pose2 in path_nodes:
+    #             point.x, point.y = self.real_voronoi_graph.nodes[pose2]['vertex']
+    #             point.z = 0.0
+    #             self.shortest_path_point_cloud.points.append(Point32(point.x, point.y, point.z))
+
 
     def tfTimerCallback(self, event):
         self.transformStamped.header.stamp = rospy.Time.now()
@@ -365,9 +541,9 @@ class GlobalPlanningBenchmarkSupervisor:
         if not self.path_receive:
             self.pathCounter += 1
             # print("sending path message ", pathMessage)
-            print("Path message received")
-            self.execution_time_callback(self.send_initial_node, self.execution_timer, self.execution_timer2)
-            self.euclidean_distance_callback(path_message, self.send_initial_node)
+            print("Path message received for initial node {}, sending goal node {} ".format(self.send_initial_node, self.send_goal_node))
+            self.execution_time_callback(self.send_initial_node, self.send_goal_node, self.send_initial_node_pose, self.send_goal_node_pose, self.execution_timer, self.execution_timer2)
+            self.euclidean_distance_callback(path_message, self.send_initial_node, self.send_goal_node, self.send_initial_node_pose, self.send_goal_node_pose)
             self.path_receive = True
             self.latest_path = path_message
             # msg_time = pathMessage.header.stamp.to_sec()
@@ -387,7 +563,7 @@ class GlobalPlanningBenchmarkSupervisor:
                             orientationW=pose.pose.orientation.w
                         ))
 
-    def euclidean_distance_callback(self, pathMessage, i_point):
+    def euclidean_distance_callback(self, pathMessage, i_point, g_point, i_node_pose, g_node_pose):
         try:
             x_y_position_list = list()
             # print("sending path message ", pathMessage)
@@ -406,29 +582,23 @@ class GlobalPlanningBenchmarkSupervisor:
             # print (" ")
             # print (x_y_position_np_array_second)
             if len(x_y_position_np_array_first) == len(x_y_position_np_array_second):
-                euclidean_distance = np.sum(np.sqrt(np.sum(np.square(x_y_position_np_array_first - x_y_position_np_array_second), axis=1)))
-                #print ("Euclidean Distance of path: ", euclidean_distance)
-
-            xposition = self.initial_pose_dict[i_point].position.x
-            yposition = self.initial_pose_dict[i_point].position.y
-            goal_one = self.initial_goal_dict[i_point]
-            xpos = self.goal_pose_dict[goal_one].position.x
-            ypos = self.goal_pose_dict[goal_one].position.y
+                euclidean_distance = np.sum(
+                    np.sqrt(np.sum(np.square(x_y_position_np_array_first - x_y_position_np_array_second), axis=1)))
+                # print ("Euclidean Distance of path: ", euclidean_distance)
 
             self.euclidean_distance_df = self.euclidean_distance_df.append({
                 'node_i': i_point,
-                'i_x': xposition,
-                'i_y': yposition,
-                'node_g': goal_one,
-                'g_x': xpos,
-                'g_y': ypos,
+                'i_x': i_node_pose.position.x,
+                'i_y': i_node_pose.position.y,
+                'node_g': g_point,
+                'g_x': g_node_pose.position.x,
+                'g_y': g_node_pose.position.y,
                 'euclidean_distance': euclidean_distance
             }, ignore_index=True)
         except:
             print_error(traceback.format_exc())
 
     def initial_pose_callback(self, initial_pose_msg):
-        # print("WRITING", self.initial_pose_counter)
         self.initial_pose_counter += 1
         msg_time = initial_pose_msg.header.stamp.to_sec()
         with open(self.initial_pose_file_path, 'a') as initial_pose_file:
@@ -459,65 +629,69 @@ class GlobalPlanningBenchmarkSupervisor:
                     orientationW=goal_msg.goal.target_pose.pose.orientation.w
                 ))
 
-    def voronoi_distance_callback(self, i_point):
+    def voronoi_distance_callback(self, i_point, g_point, i_node_pose, g_node_pose):
         try:
-            voronoi_list = self.voronoi_distance_dict[i_point]
-            goal_point = voronoi_list[0]
-            voronoi_dist = voronoi_list[1]
+            voronoi_dist = self.voronoi_distance_dict[i_point][g_point]    # goal -> key      voronoi -> value
 
-            xposition = self.initial_pose_dict[i_point].position.x
-            yposition = self.initial_pose_dict[i_point].position.y
-            goal_one = self.initial_goal_dict[i_point]
-            xpos = self.goal_pose_dict[goal_one].position.x
-            ypos = self.goal_pose_dict[goal_one].position.y
-
-            if goal_point == goal_one:
-                self.voronoi_distance_df = self.voronoi_distance_df.append({
-                    'node_i': i_point,
-                    'i_x': xposition,
-                    'i_y': yposition,
-                    'node_g': goal_one,
-                    'g_x': xpos,
-                    'g_y': ypos,
-                    'voronoi_distance': voronoi_dist
-                }, ignore_index=True)
-            else:
-                rospy.logerr("Goal did not matched.")
-                self.write_event('When writing Voronoi distance, goal did not matched')
-                raise RunFailException("Goal did not matched")
+            self.voronoi_distance_df = self.voronoi_distance_df.append({
+                'node_i': i_point,
+                'i_x': i_node_pose.position.x,
+                'i_y': i_node_pose.position.y,
+                'node_g': g_point,
+                'g_x': g_node_pose.position.x,
+                'g_y': g_node_pose.position.y,
+                'voronoi_distance': voronoi_dist
+            }, ignore_index=True)
         except:
             print_error(traceback.format_exc())
 
-    def execution_time_callback(self, i_point, time_message, time_message2):
+    def execution_time_callback(self, i_point, g_point, i_node_pose, g_node_pose, time_message, time_message2):
         try:
             msg_time = time_message2 - time_message
             rospy.loginfo("Global Planning execution time: " + str(msg_time))
-            xposition = self.initial_pose_dict[i_point].position.x
-            yposition = self.initial_pose_dict[i_point].position.y
-            goal_one = self.initial_goal_dict[i_point]
-            xpos = self.goal_pose_dict[goal_one].position.x
-            ypos = self.goal_pose_dict[goal_one].position.y
 
             self.execution_time_df = self.execution_time_df.append({
                 'node_i': i_point,
-                'i_x': xposition,
-                'i_y': yposition,
-                'node_g': goal_one,
-                'g_x': xpos,
-                'g_y': ypos,
+                'i_x': i_node_pose.position.x,
+                'i_y': i_node_pose.position.y,
+                'node_g': g_point,
+                'g_x': g_node_pose.position.x,
+                'g_y': g_node_pose.position.y,
                 'time': msg_time
             }, ignore_index=True)
         except:
             print_error(traceback.format_exc())
 
-    def feasibility_rate(self):
-        if self.total_paths == (self.feasible_paths + self.unfeasible_paths):
-            feasibility_rate = float(self.feasible_paths)/self.total_paths
-            print_info("Feasibility rate of this map is: ", feasibility_rate)
-            with open(self.feasibility_rate_file_path, 'a') as feasibility_rate_file:
-                feasibility_rate_file.write("{f}\n".format(f=feasibility_rate))
-        else:
-            print_error("Total paths is not equal to sum of feasible and unfeasible paths.")
+    def feasibility_rate(self, i_point, g_point, i_node_pose, g_node_pose, feasible_token):
+        try:
+            if feasible_token:
+                path_feasibility = 1
+            elif not feasible_token:
+                path_feasibility = 0
+            else:
+                print_error("There is problem in feasibility token")
+
+            self.feasibility_rate_df = self.feasibility_rate_df.append({
+                'node_i': i_point,
+                'i_x': i_node_pose.position.x,
+                'i_y': i_node_pose.position.y,
+                'node_g': g_point,
+                'g_x': g_node_pose.position.x,
+                'g_y': g_node_pose.position.y,
+                'path_feasibility': path_feasibility
+            }, ignore_index=True)
+        except:
+            print_error(traceback.format_exc())
+
+        # if self.total_paths == (self.feasible_paths + self.unfeasible_paths):
+        #
+        #
+        #     feasibility_rate = float(self.feasible_paths) / self.total_paths
+        #     print_info("Feasibility rate of this map is: ", feasibility_rate)
+        #     with open(self.feasibility_rate_file_path, 'a') as feasibility_rate_file:
+        #         feasibility_rate_file.write("{f}\n".format(f=feasibility_rate))
+        # else:
+        #     print_error("Total paths is not equal to sum of feasible and unfeasible paths.")
 
     def ros_shutdown_callback(self):
         """
@@ -556,6 +730,10 @@ class GlobalPlanningBenchmarkSupervisor:
         self.execution_time_df.to_csv(self.execution_time_file_path, index=False)
         self.voronoi_distance_df.to_csv(self.voronoi_distance_file_path, index=False)
         self.euclidean_distance_df.to_csv(self.euclidean_distance_file_path, index=False)
+        self.feasibility_rate_df.to_csv(self.feasibility_rate_file_path, index=False)
+        self.mean_passage_width_df.to_csv(self.mean_passage_width_file_path, index=False)
+        self.minimum_passage_width_df.to_csv(self.minimum_passage_width_file_path, index=False)
+        self.mean_normalized_passage_width_df.to_csv(self.mean_normalized_passage_width_file_path, index=False)
 
     def run_timeout_callback(self, _):
         print_error("terminating supervisor due to timeout, terminating run")
@@ -563,4 +741,3 @@ class GlobalPlanningBenchmarkSupervisor:
         self.write_event('supervisor_finished')
         rospy.signal_shutdown("Signal Shutdown because of run time out.")
         raise RunFailException("run_timeout")
-

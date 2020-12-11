@@ -3,10 +3,12 @@
 
     <arg name="headless" />
     <arg name="output" default="log" />
+    <arg name="rviz_config_file" />
 
     <node name="rviz"
           pkg="rviz"
           type="rviz"
+          args="-d $(arg rviz_config_file)"
           unless="$(arg headless)"
           output="$(arg output)" />
 

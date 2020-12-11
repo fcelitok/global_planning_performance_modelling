@@ -114,7 +114,6 @@ class BenchmarkRun(object):
 
         # copy the configuration of move_base to the run folder
         # move_base global planner config
-        print(original_move_base_global_planner_configuration_path)
         with open(original_move_base_global_planner_configuration_path) as move_base_global_planner_configuration_file:
             move_base_global_planner_configuration = yaml.load(move_base_global_planner_configuration_file)
             move_base_global_planner_configuration['planner_patience'] = self.run_timeout
@@ -198,7 +197,7 @@ class BenchmarkRun(object):
             'params_file': self.move_base_configuration_path,
             'global_planner_params_file': self.move_base_global_planner_configuration_path,
             'map_file': self.map_info_file_path,
-            'output': "screen"
+            'output': "log"
         }
         supervisor_params = {
             'params_file': self.supervisor_configuration_path,
@@ -250,7 +249,7 @@ class BenchmarkRun(object):
         # noinspection PyBroadException
         try:
             self.log(event="start_compute_metrics")
-            compute_metrics(self.run_output_folder)
+            compute_metrics(self.run_output_folder)                      # open here to calculate metric
         except:
             print_error("failed metrics computation")
             print_error(traceback.format_exc())
