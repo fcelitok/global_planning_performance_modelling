@@ -12,9 +12,9 @@ import numpy as np
 from performance_modelling_py.environment.ground_truth_map import GroundTruthMap
 
 from performance_modelling_py.utils import print_info, print_error, backup_file_if_exists
-from performance_modelling_py.metrics.localization_metrics import trajectory_length_metric, absolute_localization_error_metrics, absolute_error_vs_voronoi_radius, absolute_error_vs_scan_range, absolute_error_vs_geometric_similarity, \
-    relative_localization_error_metrics
-from performance_modelling_py.metrics.computation_metrics import cpu_and_memory_usage_metrics
+#from performance_modelling_py.metrics.localization_metrics import trajectory_length_metric, absolute_localization_error_metrics, absolute_error_vs_voronoi_radius, absolute_error_vs_scan_range, absolute_error_vs_geometric_similarity, \
+#    relative_localization_error_metrics
+# from performance_modelling_py.metrics.computation_metrics import cpu_and_memory_usage_metrics
 # from performance_modelling_py.visualisation.trajectory_visualisation import save_trajectories_plot
 
 
@@ -32,17 +32,18 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
     environment_folder = run_info['environment_folder']
     ground_truth_map_info_path = path.join(environment_folder, "data", "map.yaml")
     ground_truth_map = GroundTruthMap(ground_truth_map_info_path)
-    # laser_scan_max_range = run_info['run_parameters']['laser_scan_max_range']
 
     # localization metrics
     execution_time_path = path.join(run_output_folder, "benchmark_data", "plan_output", "execution_time.csv")
     voronoi_distance_path = path.join(run_output_folder, "benchmark_data", "plan_output", "voronoi_distance.csv")
     euclidean_distance_path = path.join(run_output_folder, "benchmark_data", "plan_output", "euclidean_distance.csv")
     feasibility_rate_path = path.join(run_output_folder, "benchmark_data", "plan_output", "feasibility_rate.csv")
-    # ground_truth_poses_path = path.join(run_output_folder, "benchmark_data", "ground_truth_poses.csv")
-    # scans_file_path = path.join(run_output_folder, "benchmark_data", "scans.csv")
+    mean_passage_width_path = path.join(run_output_folder, "benchmark_data", "plan_output", "mean_passage_width.csv")
+    mean_normalized_passage_width_path = path.join(run_output_folder, "benchmark_data", "plan_output", "mean_normalized_passage_width.csv")
+    minimum_passage_width_path = path.join(run_output_folder, "benchmark_data", "plan_output", "minimum_passage_width.csv")
 
-    logs_folder_path = path.join(run_output_folder, "logs")
+
+    # logs_folder_path = path.join(run_output_folder, "logs")
 
     metrics_result_folder_path = path.join(run_output_folder, "metric_results")
     metrics_result_file_path = path.join(metrics_result_folder_path, "metrics.yaml")
@@ -54,39 +55,28 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
         metrics_result_dict['average_planning_time'] = average_planning_time(execution_time_path)
 
         print_info("planning time over voronoi distance")
-        metrics_result_dict['planning_time_over_voronoi_distance'] = planning_time_for_voronoi(execution_time_path, voronoi_distance_path)
+        metrics_result_dict['planning_time_over_voronoi_distance'] = planning_time_over_voronoi_distance(execution_time_path, voronoi_distance_path)
 
-        print_info("average time over voronoi")
-        metrics_result_dict['average_planning_time_over_voronoi'] = average_planning_time_over_voronoi(execution_time_path, voronoi_distance_path)
+        print_info("normalised planning time")
+        metrics_result_dict['normalised_planning_time'] = normalised_planning_time(execution_time_path, voronoi_distance_path)
 
         print_info("euclidean length over voronoi distance")
         metrics_result_dict['euclidean_length_over_voronoi_distance'] = euclidean_length_over_voronoi_distance(euclidean_distance_path, voronoi_distance_path)
 
-        print_info("average euclidean length over voronoi distance")
-        metrics_result_dict['average_euclidean_length_over_voronoi_distance'] = average_euclidean_length_over_voronoi_distance(euclidean_distance_path, voronoi_distance_path)
+        print_info("normalised plan length")
+        metrics_result_dict['normalised_plan_length'] = normalised_plan_length(euclidean_distance_path, voronoi_distance_path)
 
         print_info("feasibility rate of map")
         metrics_result_dict['feasibility_rate'] = feasibility_rate(feasibility_rate_path)
 
-        # print_info("trajectory_length")
-        # metrics_result_dict['trajectory_length'] = trajectory_length_metric(ground_truth_poses_path)
-        #
-        # print_info("relative_localization_correction_error")
-        # metrics_result_dict['relative_localization_correction_error'] = relative_localization_error_metrics(path.join(logs_folder_path, "relative_localisation_correction_error"), estimated_correction_poses_path, ground_truth_poses_path)
-        #
-        # print_info("relative_localization_error")
-        # metrics_result_dict['relative_localization_error'] = relative_localization_error_metrics(path.join(logs_folder_path, "relative_localisation_error"), estimated_poses_path, ground_truth_poses_path)
-        #
-        # print_info("absolute_localization_correction_error")
-        # metrics_result_dict['absolute_localization_correction_error'] = absolute_localization_error_metrics(estimated_correction_poses_path, ground_truth_poses_path)
-        #
-        # print_info("absolute_localization_error")
-        # metrics_result_dict['absolute_localization_error'] = absolute_localization_error_metrics(estimated_poses_path, ground_truth_poses_path)
-        #
-        # computation metrics
-        # print_info("cpu_and_memory_usage")
-        # ps_snapshots_folder_path = path.join(run_output_folder, "benchmark_data", "ps_snapshots")
-        # metrics_result_dict['cpu_and_memory_usage'] = cpu_and_memory_usage_metrics(ps_snapshots_folder_path)
+        print_info("mean passage width")
+        metrics_result_dict['mean_passage_width'] = mean_passage_width(mean_passage_width_path)
+
+        print_info("mean normalized passage width")
+        metrics_result_dict['mean_normalized_passage_width'] = mean_normalized_passage_width(mean_normalized_passage_width_path)
+
+        print_info("minimum passage width")
+        metrics_result_dict['minimum_passage_width'] = minimum_passage_width(minimum_passage_width_path)
 
         # write metrics
         if not path.exists(metrics_result_folder_path):
@@ -112,10 +102,69 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
     # save_trajectories_plot(visualisation_output_folder, estimated_poses_path, estimated_correction_poses_path, ground_truth_poses_path)
 
 
+def mean_passage_width(mean_passage_width_path):
+    mean_passage_width_list = list()
+    mean_passage_width_df = pd.read_csv(mean_passage_width_path)
+
+    for i in range(mean_passage_width_df.shape[0]):
+        mean_passage_width_dict = dict()
+        mean_passage_width_dict["i_x"] = float(mean_passage_width_df["i_x"].values[i])
+        mean_passage_width_dict["i_y"] = float(mean_passage_width_df["i_y"].values[i])
+        mean_passage_width_dict["g_x"] = float(mean_passage_width_df["g_x"].values[i])
+        mean_passage_width_dict["g_y"] = float(mean_passage_width_df["g_y"].values[i])
+        mean_passage_width_dict["mean_passage_width_of_path"] = float(mean_passage_width_df["mean_passage_width"].values[i])
+
+        mean_passage_width_list.append(mean_passage_width_dict)
+    return mean_passage_width_list
+
+
+def mean_normalized_passage_width(mean_normalized_passage_width_path):
+    mean_normalized_passage_width_list = list()
+    mean_normalized_passage_width_df = pd.read_csv(mean_normalized_passage_width_path)
+
+    for i in range(mean_normalized_passage_width_df.shape[0]):
+        mean_normalized_passage_width_dict = dict()
+        mean_normalized_passage_width_dict["i_x"] = float(mean_normalized_passage_width_df["i_x"].values[i])
+        mean_normalized_passage_width_dict["i_y"] = float(mean_normalized_passage_width_df["i_y"].values[i])
+        mean_normalized_passage_width_dict["g_x"] = float(mean_normalized_passage_width_df["g_x"].values[i])
+        mean_normalized_passage_width_dict["g_y"] = float(mean_normalized_passage_width_df["g_y"].values[i])
+        mean_normalized_passage_width_dict["mean_normalized_passage_width_of_path"] = float(
+            mean_normalized_passage_width_df["mean_normalized_passage_width"].values[i])
+
+        mean_normalized_passage_width_list.append(mean_normalized_passage_width_dict)
+    return mean_normalized_passage_width_list
+
+def minimum_passage_width(minimum_passage_width_path):
+    minimum_passage_width_list = list()
+    mminimum_passage_width_df = pd.read_csv(minimum_passage_width_path)
+
+    for i in range(mminimum_passage_width_df.shape[0]):
+        minimum_passage_width_dict = dict()
+        minimum_passage_width_dict["i_x"] = float(mminimum_passage_width_df["i_x"].values[i])
+        minimum_passage_width_dict["i_y"] = float(mminimum_passage_width_df["i_y"].values[i])
+        minimum_passage_width_dict["g_x"] = float(mminimum_passage_width_df["g_x"].values[i])
+        minimum_passage_width_dict["g_y"] = float(mminimum_passage_width_df["g_y"].values[i])
+        minimum_passage_width_dict["minimum_passage_width_of_path"] = float(mminimum_passage_width_df["minimum_passage_width"].values[i])
+
+        minimum_passage_width_list.append(minimum_passage_width_dict)
+    return minimum_passage_width_list
+
+
 def feasibility_rate(feasibility_rate_path):
-    with open(feasibility_rate_path, 'r') as path:
-        feasibility_rate = float(path.read())
-    return feasibility_rate
+
+    feasibility_rate_list = list()
+    feasibility_rate_df = pd.read_csv(feasibility_rate_path)
+
+    for i in range(feasibility_rate_df.shape[0]):
+        feasibility_rate_dict = dict()
+        feasibility_rate_dict["i_x"] = float(feasibility_rate_df["i_x"].values[i])
+        feasibility_rate_dict["i_y"] = float(feasibility_rate_df["i_y"].values[i])
+        feasibility_rate_dict["g_x"] = float(feasibility_rate_df["g_x"].values[i])
+        feasibility_rate_dict["g_y"] = float(feasibility_rate_df["g_y"].values[i])
+        feasibility_rate_dict["feasibility_rate_of_path"] = float(feasibility_rate_df["path_feasibility"].values[i])
+
+        feasibility_rate_list.append(feasibility_rate_dict)
+    return feasibility_rate_list
 
 
 def average_planning_time(time_path):
@@ -125,9 +174,9 @@ def average_planning_time(time_path):
     return float(each_plan_time_df)
 
 
-def planning_time_for_voronoi(time_path, voronoi_path):
-    time_voronoi_metric_dict = dict()
+def planning_time_over_voronoi_distance(time_path, voronoi_path):
 
+    time_voronoi_list = list()
     time_df = pd.read_csv(time_path)
     voronoi_df = pd.read_csv(voronoi_path)
     each_time_list = list(time_df["time"].values)
@@ -135,26 +184,24 @@ def planning_time_for_voronoi(time_path, voronoi_path):
     size_of_time_df = time_df.shape[0]
     size_of_voronoi_df = voronoi_df.shape[0]
 
-    if size_of_time_df == size_of_voronoi_df:       # TODO double for loop can solve problem think about it
-        for i in range(size_of_time_df):
-            if (time_df["i_x"].values[i] == voronoi_df["i_x"].values[i]) & (
-                    time_df["i_y"].values[i] == voronoi_df["i_y"].values[i]) & (
-                    time_df["g_x"].values[i] == voronoi_df["g_x"].values[i]) & (
-                    time_df["g_y"].values[i] == voronoi_df["g_y"].values[i]):
-                key = str(time_df["i_x"].values[i]) + ',' + str(time_df["i_y"].values[i]) + ',' + str(
-                    time_df["g_x"].values[i]) + ',' + str(time_df["g_y"].values[i])
-                time_voronoi_metric_dict[key] = float(each_time_list[i]/each_voronoi_list[i])
-            else:
-                print_error("Time and Voronoi values did not matched")
-                # TODO break is not a good solution think about it
-                # break
-    else:
-        print_error("Time and Voronoi length did not matched")
+    for i in range(size_of_time_df):
+        for j in range(size_of_voronoi_df):
+            if (time_df["i_x"].values[i] == voronoi_df["i_x"].values[j]) & (
+                time_df["i_y"].values[i] == voronoi_df["i_y"].values[j]) & (
+                time_df["g_x"].values[i] == voronoi_df["g_x"].values[j]) & (
+                    time_df["g_y"].values[i] == voronoi_df["g_y"].values[j]):
+                time_voronoi_metric_dict = dict()
+                time_voronoi_metric_dict["i_x"] = float(time_df["i_x"].values[i])
+                time_voronoi_metric_dict["i_y"] = float(time_df["i_y"].values[i])
+                time_voronoi_metric_dict["g_x"] = float(time_df["g_x"].values[i])
+                time_voronoi_metric_dict["g_y"] = float(time_df["g_y"].values[i])
+                time_voronoi_metric_dict["normalized_planning_time_for_each_path"] = float(each_time_list[i]/each_voronoi_list[j])
+                time_voronoi_list.append(time_voronoi_metric_dict)
 
-    return time_voronoi_metric_dict
+    return time_voronoi_list
 
 
-def average_planning_time_over_voronoi(time_path, voronoi_path):
+def normalised_planning_time(time_path, voronoi_path):
     sum = 0
 
     time_df = pd.read_csv(time_path)
@@ -164,26 +211,25 @@ def average_planning_time_over_voronoi(time_path, voronoi_path):
     size_of_time_df = time_df.shape[0]
     size_of_voronoi_df = voronoi_df.shape[0]
 
-    if size_of_time_df == size_of_voronoi_df:             # TODO double for loop can solve problem think about it
-        for i in range(size_of_time_df):
-            if (time_df["i_x"].values[i] == voronoi_df["i_x"].values[i]) & (
-                    time_df["i_y"].values[i] == voronoi_df["i_y"].values[i]) & (
-                    time_df["g_x"].values[i] == voronoi_df["g_x"].values[i]) & (
-                    time_df["g_y"].values[i] == voronoi_df["g_y"].values[i]):
-                sum = float(each_time_list[i] / each_voronoi_list[i]) + sum
-            else:
-                print_error("Time and Voronoi values did not matched")
-                # TODO break is not a good solution think about it
-                # break
+    # TODO double for loop can solve problem think about it
+    for i in range(size_of_time_df):
+        for j in range(size_of_voronoi_df):
+            if (time_df["i_x"].values[i] == voronoi_df["i_x"].values[j]) & (
+                    time_df["i_y"].values[i] == voronoi_df["i_y"].values[j]) & (
+                    time_df["g_x"].values[i] == voronoi_df["g_x"].values[j]) & (
+                    time_df["g_y"].values[i] == voronoi_df["g_y"].values[j]):
+                sum = float(each_time_list[i] / each_voronoi_list[j]) + sum
+    if size_of_time_df <= 0:
+        print_error("size_of_time_df is equal or lover zero.")
+        average = 0
     else:
-        print_error("Time and Voronoi length did not matched")
-
-    average = sum / size_of_time_df
+        average = sum / size_of_time_df
     return average
 
-def euclidean_length_over_voronoi_distance(euclidean_path, voronoi_path):
-    euclidean_voronoi_metric_dict = dict()
 
+def euclidean_length_over_voronoi_distance(euclidean_path, voronoi_path):
+
+    euclidean_voronoi_list = list()
     euclidean_df = pd.read_csv(euclidean_path)
     voronoi_df = pd.read_csv(voronoi_path)
     each_euclidean_list = list(euclidean_df["euclidean_distance"].values)
@@ -191,25 +237,24 @@ def euclidean_length_over_voronoi_distance(euclidean_path, voronoi_path):
     size_of_euclidean_df = euclidean_df.shape[0]
     size_of_voronoi_df = voronoi_df.shape[0]
 
-    if size_of_euclidean_df == size_of_voronoi_df:          # TODO double for loop can solve problem think about it
-        for i in range(size_of_euclidean_df):
-            if (euclidean_df["i_x"].values[i] == voronoi_df["i_x"].values[i]) & (
-                    euclidean_df["i_y"].values[i] == voronoi_df["i_y"].values[i]) & (
-                    euclidean_df["g_x"].values[i] == voronoi_df["g_x"].values[i]) & (
-                    euclidean_df["g_y"].values[i] == voronoi_df["g_y"].values[i]):
-                key = str(euclidean_df["i_x"].values[i]) + ',' + str(euclidean_df["i_y"].values[i]) + ',' + str(
-                    euclidean_df["g_x"].values[i]) + ',' + str(euclidean_df["g_y"].values[i])
-                euclidean_voronoi_metric_dict[key] = float(each_euclidean_list[i] / each_voronoi_list[i])
-            else:
-                print_error("Euclidean and Voronoi values did not matched")
-                # TODO break is not a good solution think about it
-                # break
-    else:
-        print_error("Euclidean and Voronoi length did not matched")
+    # TODO double for loop can solve problem think about it # check for join in data frame (innerjoin)
+    for i in range(size_of_euclidean_df):
+        for j in range(size_of_voronoi_df):
+            if (euclidean_df["i_x"].values[i] == voronoi_df["i_x"].values[j]) & (
+                    euclidean_df["i_y"].values[i] == voronoi_df["i_y"].values[j]) & (
+                    euclidean_df["g_x"].values[i] == voronoi_df["g_x"].values[j]) & (
+                    euclidean_df["g_y"].values[i] == voronoi_df["g_y"].values[j]):
+                euclidean_voronoi_metric_dict = dict()
+                euclidean_voronoi_metric_dict["i_x"] = float(euclidean_df["i_x"].values[i])
+                euclidean_voronoi_metric_dict["i_y"] = float(euclidean_df["i_y"].values[i])
+                euclidean_voronoi_metric_dict["g_x"] = float(euclidean_df["g_x"].values[i])
+                euclidean_voronoi_metric_dict["g_y"] = float(euclidean_df["g_y"].values[i])
+                euclidean_voronoi_metric_dict["normalised_plan_length_for_each_path"] = float(each_euclidean_list[i] / each_voronoi_list[j])
+                euclidean_voronoi_list.append(euclidean_voronoi_metric_dict)
+    return euclidean_voronoi_list
 
-    return euclidean_voronoi_metric_dict
 
-def average_euclidean_length_over_voronoi_distance(euclidean_path, voronoi_path):
+def normalised_plan_length(euclidean_path, voronoi_path):
     sum = 0
 
     euclidean_df = pd.read_csv(euclidean_path)
@@ -219,21 +264,18 @@ def average_euclidean_length_over_voronoi_distance(euclidean_path, voronoi_path)
     size_of_euclidean_df = euclidean_df.shape[0]
     size_of_voronoi_df = voronoi_df.shape[0]
 
-    if size_of_euclidean_df == size_of_voronoi_df:  # TODO double for loop can solve problem think about it
-        for i in range(size_of_euclidean_df):
-            if (euclidean_df["i_x"].values[i] == voronoi_df["i_x"].values[i]) & (
-                    euclidean_df["i_y"].values[i] == voronoi_df["i_y"].values[i]) & (
-                    euclidean_df["g_x"].values[i] == voronoi_df["g_x"].values[i]) & (
-                    euclidean_df["g_y"].values[i] == voronoi_df["g_y"].values[i]):
-                sum = float(each_euclidean_list[i] / each_voronoi_list[i]) + sum
-            else:
-                print_error("Euclidean and Voronoi values did not matched")
-                # TODO break is not a good solution think about it
-                # break
+    for i in range(size_of_euclidean_df):
+        for j in range(size_of_voronoi_df):
+            if (euclidean_df["i_x"].values[i] == voronoi_df["i_x"].values[j]) & (
+                    euclidean_df["i_y"].values[i] == voronoi_df["i_y"].values[j]) & (
+                    euclidean_df["g_x"].values[i] == voronoi_df["g_x"].values[j]) & (
+                    euclidean_df["g_y"].values[i] == voronoi_df["g_y"].values[j]):
+                sum = float(each_euclidean_list[i] / each_voronoi_list[j]) + sum
+    if size_of_euclidean_df <= 0:
+        print_error("size_of_euclidean_df is equal or lover zero.")
+        average = 0
     else:
-        print_error("Euclidean and Voronoi length did not matched")
-
-    average = sum / size_of_euclidean_df
+        average = sum / size_of_euclidean_df
     return average
 
 
