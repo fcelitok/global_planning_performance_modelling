@@ -84,14 +84,28 @@ class BenchmarkRun(object):
         components_configurations_folder = path.expanduser(self.benchmark_configuration['components_configurations_folder'])
         original_supervisor_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['supervisor'])
         original_move_base_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['move_base'])
-        original_move_base_global_planner_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['move_base_global_planner'])
+        if global_planner_name == 'GlobalPlanner':
+            original_move_base_global_planner_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['move_base_global_planner'])
+        elif global_planner_name == 'SBPLLatticePlanner':
+            original_move_base_global_planner_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration[ 'components_configuration']['move_base_sbpl_planner'])
+        elif global_planner_name == 'OmplGlobalPlanner':
+            original_move_base_global_planner_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['move_base_ompl_planner'])
+        else:
+            raise ValueError()
         self.original_rviz_configuration_path = path.join(components_configurations_folder, self.benchmark_configuration['components_configuration']['rviz'])
         original_robot_urdf_path = path.join(environment_folder, "gazebo", "robot.urdf")
 
         # components configuration relative paths
         supervisor_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['supervisor'])
         move_base_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['move_base'])
-        move_base_global_planner_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['move_base_global_planner'])
+        if global_planner_name == 'GlobalPlanner':
+            move_base_global_planner_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['move_base_global_planner'])
+        elif global_planner_name == 'SBPLLatticePlanner':
+            move_base_global_planner_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration[ 'components_configuration']['move_base_sbpl_planner'])
+        elif global_planner_name == 'OmplGlobalPlanner':
+            move_base_global_planner_configuration_relative_path = path.join("components_configuration", self.benchmark_configuration['components_configuration']['move_base_ompl_planner'])
+        else:
+            raise ValueError()
         robot_realistic_urdf_relative_path = path.join("components_configuration", "gazebo", "robot_realistic.urdf")
 
         # components configuration paths in run folder (inside ds output file path)

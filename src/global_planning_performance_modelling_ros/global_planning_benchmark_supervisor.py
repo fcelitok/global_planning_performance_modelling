@@ -99,7 +99,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.execution_timer = 0
         self.execution_timer2 = 0
 
-        self.random_points = 1  # define for how many random path will draw
+        self.random_points = 0  # define for how many random path will draw
 
         # self.total_paths = 0
         self.feasible_paths = 0
