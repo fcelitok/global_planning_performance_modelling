@@ -9,6 +9,8 @@ from os import path
 import yaml
 import pandas as pd
 import numpy as np
+from PIL import Image
+from skimage.draw import line
 from performance_modelling_py.environment.ground_truth_map import GroundTruthMap
 
 from performance_modelling_py.utils import print_info, print_error, backup_file_if_exists
@@ -30,8 +32,6 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
         run_info = yaml.safe_load(run_info_file)
 
     environment_folder = run_info['environment_folder']
-    ground_truth_map_info_path = path.join(environment_folder, "data", "map.yaml")
-    ground_truth_map = GroundTruthMap(ground_truth_map_info_path)
 
     # localization metrics
     execution_time_path = path.join(run_output_folder, "benchmark_data", "plan_output", "execution_time.csv")
@@ -78,6 +78,9 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
         print_info("minimum passage width")
         metrics_result_dict['minimum_passage_width'] = minimum_passage_width(minimum_passage_width_path)
 
+        print_info("number_of_walls_traversed")
+        metrics_result_dict['number_of_walls_traversed'] = number_of_walls_traversed(feasibility_rate_path, environment_folder)
+
         # write metrics
         if not path.exists(metrics_result_folder_path):
             os.makedirs(metrics_result_folder_path)
@@ -100,6 +103,51 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
     # print_info("visualisation")
     # visualisation_output_folder = path.join(run_output_folder, "visualisation")
     # save_trajectories_plot(visualisation_output_folder, estimated_poses_path, estimated_correction_poses_path, ground_truth_poses_path)
+
+
+def number_of_walls_traversed(feasibility_rate_path, environment_folder):
+    feasibility_rate_df = pd.read_csv(feasibility_rate_path)
+    ground_truth_map_info_path = path.join(environment_folder, "data", "map.yaml")
+    ground_truth_map_info = GroundTruthMap(ground_truth_map_info_path)
+
+    ground_truth_map_png_path = path.join(environment_folder, "data", "map.pgm")
+    ground_truth_map_png = Image.open(ground_truth_map_png_path)
+
+    ground_truth_map_pixels = ground_truth_map_png.load()
+
+    number_of_walls_traversed_list = list()
+
+    for index, row in feasibility_rate_df.iterrows():
+        if row['path_feasibility'] == 1:
+            number_of_walls_traversed_dict = dict()
+
+            p_i_x, p_i_y = ground_truth_map_info.map_frame_to_image_coordinates([row['i_x'], row['i_y']])
+            p_g_x, p_g_y = ground_truth_map_info.map_frame_to_image_coordinates([row['g_x'], row['g_y']])
+
+            map_line = np.array(line(p_i_x, p_i_y, p_g_x, p_g_y)).transpose()
+
+            ground_truth_free_cell_count = 0
+            ground_truth_occupied_cell_count = 0
+            ground_truth_unknown_cell_count = 0
+
+            for item in map_line:
+                # print(item)
+                i = int(item[0])
+                j = int(item[1])
+                ground_truth_free_cell_count += ground_truth_map_pixels[i, j] == (255, 255, 255)
+                ground_truth_occupied_cell_count += ground_truth_map_pixels[i, j] == (0, 0, 0)
+                ground_truth_unknown_cell_count += ground_truth_map_pixels[i, j] == (205, 205, 205)
+            number_of_walls_traversed = ground_truth_occupied_cell_count / len(map_line)
+
+            number_of_walls_traversed_dict["i_x"] = float(row['i_x'])
+            number_of_walls_traversed_dict["i_y"] = float(row['i_y'])
+            number_of_walls_traversed_dict["g_x"] = float(row['g_x'])
+            number_of_walls_traversed_dict["g_y"] = float(row['g_y'])
+            number_of_walls_traversed_dict["number_of_walls_traversed"] = float(number_of_walls_traversed)
+
+            number_of_walls_traversed_list.append(number_of_walls_traversed_dict)
+
+    return number_of_walls_traversed_list
 
 
 def mean_passage_width(mean_passage_width_path):
