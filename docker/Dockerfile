@@ -35,8 +35,6 @@ RUN \
     ros-melodic-dwa-local-planner \
     ros-melodic-sbpl \
     ros-melodic-sbpl-dbgsym \
-    ros-melodic-sbpl-lattice-planner \
-    ros-melodic-sbpl-lattice-planner-dbgsym \
     ros-melodic-sbpl-recovery \
     ros-melodic-sbpl-recovery-dbgsym \
     ros-melodic-ompl \
@@ -65,10 +63,10 @@ USER $user_name:$user_group
 RUN mkdir -p ~/w/catkin_ws/src
 RUN \
   cd ~/w/catkin_ws/src && \
-  git clone https://github.com/fcelitok/performance_modelling.git && \
+  git clone --branch=master https://github.com/AIRLab-POLIMI/performance_modelling.git && \
   git clone --branch=melodic-devel https://github.com/fcelitok/global_planning_performance_modelling_pkg.git && \
   git clone https://github.com/fcelitok/move-base-ompl.git && \
-  git clone --branch=melodic-devel https://github.com/Enri2077/slam_toolbox.git
+  git clone --branch=melodic-devel https://github.com/fcelitok/navigation_experimental.git
 
 
 # build workspace and install python user packages

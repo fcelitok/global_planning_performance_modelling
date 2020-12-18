@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 from skimage.draw import line
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 from performance_modelling_py.environment.ground_truth_map import GroundTruthMap
 
 from performance_modelling_py.utils import print_info, print_error, backup_file_if_exists
@@ -106,6 +108,8 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
 
 
 def number_of_walls_traversed(feasibility_rate_path, environment_folder):
+    draw_map = 1            # If you do not want to see maps make draw_map = 0
+
     feasibility_rate_df = pd.read_csv(feasibility_rate_path)
     ground_truth_map_info_path = path.join(environment_folder, "data", "map.yaml")
     ground_truth_map_info = GroundTruthMap(ground_truth_map_info_path)
@@ -130,6 +134,7 @@ def number_of_walls_traversed(feasibility_rate_path, environment_folder):
             ground_truth_occupied_cell_count = 0
             ground_truth_unknown_cell_count = 0
 
+            list_of_occupied = list()
             for item in map_line:
                 # print(item)
                 i = int(item[0])
@@ -137,7 +142,10 @@ def number_of_walls_traversed(feasibility_rate_path, environment_folder):
                 ground_truth_free_cell_count += ground_truth_map_pixels[i, j] == (255, 255, 255)
                 ground_truth_occupied_cell_count += ground_truth_map_pixels[i, j] == (0, 0, 0)
                 ground_truth_unknown_cell_count += ground_truth_map_pixels[i, j] == (205, 205, 205)
+                if ground_truth_map_pixels[i, j] == (0, 0, 0):
+                    list_of_occupied.append([i, j])
             number_of_walls_traversed = ground_truth_occupied_cell_count / len(map_line)
+            list_of_occupied_np = np.array(list_of_occupied)
 
             number_of_walls_traversed_dict["i_x"] = float(row['i_x'])
             number_of_walls_traversed_dict["i_y"] = float(row['i_y'])
@@ -147,6 +155,13 @@ def number_of_walls_traversed(feasibility_rate_path, environment_folder):
 
             number_of_walls_traversed_list.append(number_of_walls_traversed_dict)
 
+        if draw_map == 1:
+            image = mpimg.imread(ground_truth_map_png_path)
+            plt.imshow(image)
+            plt.scatter(map_line[:, 0], map_line[:, 1], marker=".", color="black", s=1)
+            if list_of_occupied_np.size >= 1:
+                plt.scatter(list_of_occupied_np[:, 0], list_of_occupied_np[:, 1], marker=".", color="red", s=1)
+            plt.show()
     return number_of_walls_traversed_list
 
 

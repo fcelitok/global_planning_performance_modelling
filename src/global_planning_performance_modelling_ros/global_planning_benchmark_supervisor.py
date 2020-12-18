@@ -99,7 +99,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.execution_timer = 0
         self.execution_timer2 = 0
 
-        self.random_points = 0  # define for how many random path will draw
+        self.random_points = 1  # define for how many random path will draw
 
         # self.total_paths = 0
         self.feasible_paths = 0
@@ -181,7 +181,7 @@ class GlobalPlanningBenchmarkSupervisor:
             for goal_node in goal_node_value:
                 self.start_run(initial_node=initial_node_key, goal_node=goal_node)
                 print(" ")
-                rospy.sleep(1.0)
+                rospy.sleep(0.5)
 
     # TODO: In ANAPlanner in some points it is sending wrong goal point but for this wrong point it is making path
     # collect all initial nodes and goal nodes in dictionary
@@ -242,8 +242,12 @@ class GlobalPlanningBenchmarkSupervisor:
             goal_and_distance_dict[farthest_node] = max_node_cost
 
             remove_list = [initial_node, farthest_node]
-            # TODO add if for random points
-            random_final_point_list = random.sample(list(set(list(self.voronoi_graph.node)) - set(remove_list)), self.random_points)
+            if self.random_points < len(self.voronoi_graph.nodes)-1:
+                random_final_point_list = random.sample(list(set(list(self.voronoi_graph.node)) - set(remove_list)), self.random_points)
+            else:
+                print_error("Cannot select random points more than nodes")
+                rospy.signal_shutdown("Signal shutdown because of too much random points")
+                break
 
             for goal_node in random_final_point_list:
                 goal_node_list.append(goal_node)
