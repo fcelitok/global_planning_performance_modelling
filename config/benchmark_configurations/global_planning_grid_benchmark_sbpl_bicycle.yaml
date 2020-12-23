@@ -2,14 +2,22 @@ components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_pe
 
 run_timeout : 36000.0
 
+<<<<<<< HEAD
 sbpl_primitives_path: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/primitives
+=======
+sbpl_primitives_path: /home/furkan/Desktop/all_primitives/matteo_matlab
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 
 supervisor_component: global_planning_benchmark_supervisor
 
 components_configuration:
   supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml
   move_base: move_base/move_base_tb3.yaml
+<<<<<<< HEAD
   move_base_sbpl_planner: move_base/move_base_sbpl_lattice_planner.yaml
+=======
+  move_base_global_planner: move_base/move_base_sbpl_lattice_planner.yaml
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
   rviz: rviz/default_view.rviz
 
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them

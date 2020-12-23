@@ -181,7 +181,11 @@ class GlobalPlanningBenchmarkSupervisor:
             for goal_node in goal_node_value:
                 self.start_run(initial_node=initial_node_key, goal_node=goal_node)
                 print(" ")
+<<<<<<< HEAD
                 rospy.sleep(0.5)
+=======
+                rospy.sleep(1.0)
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 
     # TODO: In ANAPlanner in some points it is sending wrong goal point but for this wrong point it is making path
     # collect all initial nodes and goal nodes in dictionary
@@ -242,12 +246,17 @@ class GlobalPlanningBenchmarkSupervisor:
             goal_and_distance_dict[farthest_node] = max_node_cost
 
             remove_list = [initial_node, farthest_node]
+<<<<<<< HEAD
             if self.random_points < len(self.voronoi_graph.nodes)-1:
                 random_final_point_list = random.sample(list(set(list(self.voronoi_graph.node)) - set(remove_list)), self.random_points)
             else:
                 print_error("Cannot select random points more than nodes")
                 rospy.signal_shutdown("Signal shutdown because of too much random points")
                 break
+=======
+            # TODO add if for random points
+            random_final_point_list = random.sample(list(set(list(self.voronoi_graph.node)) - set(remove_list)), self.random_points)
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 
             for goal_node in random_final_point_list:
                 goal_node_list.append(goal_node)
@@ -284,10 +293,17 @@ class GlobalPlanningBenchmarkSupervisor:
             point.z = 0.0
             self.point_cloud.points.append(Point32(point.x, point.y, point.z))
 
+<<<<<<< HEAD
 
 
 
 
+=======
+
+
+
+
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
     def pose_finder(self, start_node, final_node):
 
         initial_node_pose = Pose()

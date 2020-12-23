@@ -4,7 +4,11 @@ run_timeout : 36000.0
 
 #sbpl_primitives_path: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim
 #sbpl_primitives_path: /home/furkan/Desktop/all_primitives/sbpl_matlab_mprim
+<<<<<<< HEAD
 sbpl_primitives_path: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/primitives
+=======
+sbpl_primitives_path: /home/furkan/Desktop/all_primitives/matteo_matlab
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 
 supervisor_component: global_planning_benchmark_supervisor
 

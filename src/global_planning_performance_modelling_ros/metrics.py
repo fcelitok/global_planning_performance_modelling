@@ -9,10 +9,13 @@ from os import path
 import yaml
 import pandas as pd
 import numpy as np
+<<<<<<< HEAD
 from PIL import Image
 from skimage.draw import line
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+=======
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 from performance_modelling_py.environment.ground_truth_map import GroundTruthMap
 
 from performance_modelling_py.utils import print_info, print_error, backup_file_if_exists
@@ -34,6 +37,11 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
         run_info = yaml.safe_load(run_info_file)
 
     environment_folder = run_info['environment_folder']
+<<<<<<< HEAD
+=======
+    ground_truth_map_info_path = path.join(environment_folder, "data", "map.yaml")
+    ground_truth_map = GroundTruthMap(ground_truth_map_info_path)
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 
     # localization metrics
     execution_time_path = path.join(run_output_folder, "benchmark_data", "plan_output", "execution_time.csv")
@@ -80,9 +88,12 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
         print_info("minimum passage width")
         metrics_result_dict['minimum_passage_width'] = minimum_passage_width(minimum_passage_width_path)
 
+<<<<<<< HEAD
         print_info("number_of_walls_traversed")
         metrics_result_dict['number_of_walls_traversed'] = number_of_walls_traversed(feasibility_rate_path, environment_folder)
 
+=======
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
         # write metrics
         if not path.exists(metrics_result_folder_path):
             os.makedirs(metrics_result_folder_path)
@@ -107,6 +118,7 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
     # save_trajectories_plot(visualisation_output_folder, estimated_poses_path, estimated_correction_poses_path, ground_truth_poses_path)
 
 
+<<<<<<< HEAD
 def number_of_walls_traversed(feasibility_rate_path, environment_folder):
     draw_map = 1            # If you do not want to see maps make draw_map = 0
 
@@ -174,6 +186,8 @@ def number_of_walls_traversed(feasibility_rate_path, environment_folder):
     return number_of_walls_traversed_list
 
 
+=======
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 def mean_passage_width(mean_passage_width_path):
     mean_passage_width_list = list()
     mean_passage_width_df = pd.read_csv(mean_passage_width_path)

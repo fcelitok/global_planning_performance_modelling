@@ -33,6 +33,7 @@ RUN \
     ros-melodic-move-base \
     ros-melodic-global-planner \
     ros-melodic-dwa-local-planner \
+<<<<<<< HEAD
     ros-melodic-sbpl \
     ros-melodic-sbpl-dbgsym \
     ros-melodic-sbpl-recovery \
@@ -40,6 +41,8 @@ RUN \
     ros-melodic-ompl \
     ros-melodic-ompl-dbgsym \
     ros-melodic-turtlebot3 \
+=======
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
     ros-melodic-tf-conversions \
     ros-melodic-tf2-sensor-msgs \
     && apt upgrade -y \
@@ -63,10 +66,18 @@ USER $user_name:$user_group
 RUN mkdir -p ~/w/catkin_ws/src
 RUN \
   cd ~/w/catkin_ws/src && \
+<<<<<<< HEAD
   git clone --branch=master https://github.com/AIRLab-POLIMI/performance_modelling.git && \
   git clone --branch=melodic-devel https://github.com/fcelitok/global_planning_performance_modelling_pkg.git && \
   git clone --branch=master https://github.com/fcelitok/move-base-ompl.git && \
   git clone --branch=melodic-devel https://github.com/fcelitok/navigation_experimental.git
+=======
+  git clone https://github.com/Enri2077/performance_modelling.git && \
+  git clone --branch=melodic-devel https://github.com/Enri2077/slam_performance_modelling.git && \
+  git clone --branch=melodic-devel https://github.com/Enri2077/gazebo_ros_pkgs.git && \
+  git clone --branch=melodic-devel https://github.com/Enri2077/escape_lethal_cost_recovery_behavior.git && \
+  git clone --branch=melodic-devel https://github.com/Enri2077/slam_toolbox.git
+>>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
 
 
 # build workspace and install python user packages
