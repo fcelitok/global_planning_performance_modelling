@@ -9,10 +9,8 @@ import traceback
 
 import rospy
 import yaml
-from xml.etree import ElementTree as et
 import time
 from os import path
-import numpy as np
 
 from performance_modelling_py.utils import backup_file_if_exists, print_info, print_error
 from performance_modelling_py.component_proxies.ros1_component import Component
@@ -56,7 +54,7 @@ class BenchmarkRun(object):
             use_dijkstra = self.run_parameters['use_dijkstra']
             lethal_cost = self.run_parameters['lethal_cost']
         elif global_planner_name == 'SBPLLatticePlanner':
-            sbpl_primitives_directory_path = self.benchmark_configuration['sbpl_primitives_path']
+            sbpl_primitives_directory_path = path.expanduser(self.benchmark_configuration['sbpl_primitives_path'])
             sbpl_primitives_name = self.run_parameters['sbpl_primitives_name']
             sbpl_primitives_file_path = path.join(sbpl_primitives_directory_path, sbpl_primitives_name)
             planner_type = self.run_parameters['planner_type']
@@ -217,6 +215,22 @@ class BenchmarkRun(object):
             'params_file': self.supervisor_configuration_path,
             'output': "screen"
         }
+        recorder_params = {
+            'bag_file_path': path.join(self.run_output_folder, "benchmark_data.bag"),
+            'topics': "/cmd_vel /initialpose /map /map_metadata /map_updates /move_base/DWAPlannerROS/cost_cloud /move_base/DWAPlannerROS/global_plan \
+             /move_base/DWAPlannerROS/local_plan /move_base/DWAPlannerROS/parameter_descriptions /move_base/DWAPlannerROS/parameter_updates \
+             /move_base/DWAPlannerROS/trajectory_cloud /move_base/GlobalPlanner/plan /move_base/NavfnROS/plan /move_base/OmplGlobalPlanner/plan \
+             /move_bas/SBPLLatticePlanner/plan /move_base/SBPLLatticePlanner/sbpl_lattice_planner_stats /move_base/cancel /move_base/current_goal \
+             /move_base/feedback /move_base/global_costmap/costmap /move_base/global_costmap/costmap_updates /move_base/global_costmap/footprint \
+             /move_base/global_costmap/inflation_layer/parameter_descriptions /move_base/global_costmap/inflation_layer/parameter_updates \
+             /move_base/global_costmap/parameter_descriptions /move_base/global_costmap/parameter_updates /move_base/global_costmap/static_layer/parameter_descriptions \
+             /move_base/global_costmap/static_layer/parameter_updates /move_base/goal /move_base/local_costmap/costmap /move_base/local_costmap/costmap_updates \
+             /move_base/local_costmap/footprint /move_base/local_costmap/inflation_layer/parameter_descriptions /move_base/local_costmap/inflation_layer/parameter_updates \
+             /move_base/local_costmap/parameter_descriptions /move_base/local_costmap/parameter_updates /move_base/local_costmap/static_layer/parameter_descriptions \
+             /move_base/local_costmap/static_layer/parameter_updates /move_base/parameter_descriptions /move_base/parameter_updates /move_base/result /move_base/status \
+             /move_base_simple/goal /odom /rosout /rosout_agg /tf /tf_static",
+            'output': "log"
+        }
 
 
         # declare components
@@ -226,10 +240,6 @@ class BenchmarkRun(object):
         navigation = Component('move_base', 'global_planning_performance_modelling', 'move_base.launch', navigation_params)
         supervisor = Component('supervisor', 'global_planning_performance_modelling', 'global_planning_benchmark_supervisor.launch', supervisor_params)
         # recorder = Component('recorder', 'global_planning_performance_modelling', 'rosbag_recorder.launch', recorder_params)
-
-        # set gazebo's environment variables
-        # os.environ['GAZEBO_MODEL_PATH'] = self.gazebo_model_path_env_var
-        # os.environ['GAZEBO_PLUGIN_PATH'] = self.gazebo_plugin_path_env_var
 
         # launch roscore and setup a node to monitor ros
         roscore.launch()

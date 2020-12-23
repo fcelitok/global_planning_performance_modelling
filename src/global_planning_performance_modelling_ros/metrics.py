@@ -135,15 +135,24 @@ def number_of_walls_traversed(feasibility_rate_path, environment_folder):
             ground_truth_unknown_cell_count = 0
 
             list_of_occupied = list()
+            previous_item = [-1, -1]
+            wall_counter = 0
             for item in map_line:
                 # print(item)
                 i = int(item[0])
                 j = int(item[1])
-                ground_truth_free_cell_count += ground_truth_map_pixels[i, j] == (255, 255, 255)
-                ground_truth_occupied_cell_count += ground_truth_map_pixels[i, j] == (0, 0, 0)
-                ground_truth_unknown_cell_count += ground_truth_map_pixels[i, j] == (205, 205, 205)
+                ground_truth_free_cell_count += ground_truth_map_pixels[i, j] == (255, 255, 255)    #white
+                ground_truth_occupied_cell_count += ground_truth_map_pixels[i, j] == (0, 0, 0)      #black
+                ground_truth_unknown_cell_count += ground_truth_map_pixels[i, j] == (205, 205, 205) #gray
                 if ground_truth_map_pixels[i, j] == (0, 0, 0):
                     list_of_occupied.append([i, j])
+                if previous_item[0] and previous_item[1] != -1:
+                    k = int(previous_item[0])
+                    t = int(previous_item[1])
+                    if ground_truth_map_pixels[i, j] == (0, 0, 0) and (ground_truth_map_pixels[k, t] == (255, 255, 255) or ground_truth_map_pixels[k, t] == (205, 205, 205)):
+                        wall_counter += 1
+                previous_item = item
+            # print(index, "xxxxx: ", wall_counter)
             number_of_walls_traversed = ground_truth_occupied_cell_count / len(map_line)
             list_of_occupied_np = np.array(list_of_occupied)
 
@@ -151,7 +160,7 @@ def number_of_walls_traversed(feasibility_rate_path, environment_folder):
             number_of_walls_traversed_dict["i_y"] = float(row['i_y'])
             number_of_walls_traversed_dict["g_x"] = float(row['g_x'])
             number_of_walls_traversed_dict["g_y"] = float(row['g_y'])
-            number_of_walls_traversed_dict["number_of_walls_traversed"] = float(number_of_walls_traversed)
+            number_of_walls_traversed_dict["number_of_walls_traversed"] = float(wall_counter)
 
             number_of_walls_traversed_list.append(number_of_walls_traversed_dict)
 
