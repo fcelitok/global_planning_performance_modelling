@@ -1,4 +1,4 @@
-components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
+components_configurations_folder: ~/w/catkin_ws/src/global_planning_performance_modelling/config/component_configurations
 
 run_timeout : 36000.0
 

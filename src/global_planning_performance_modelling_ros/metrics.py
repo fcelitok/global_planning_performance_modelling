@@ -16,10 +16,6 @@ import matplotlib.image as mpimg
 from performance_modelling_py.environment.ground_truth_map import GroundTruthMap
 
 from performance_modelling_py.utils import print_info, print_error, backup_file_if_exists
-#from performance_modelling_py.metrics.localization_metrics import trajectory_length_metric, absolute_localization_error_metrics, absolute_error_vs_voronoi_radius, absolute_error_vs_scan_range, absolute_error_vs_geometric_similarity, \
-#    relative_localization_error_metrics
-# from performance_modelling_py.metrics.computation_metrics import cpu_and_memory_usage_metrics
-# from performance_modelling_py.visualisation.trajectory_visualisation import save_trajectories_plot
 
 
 def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/performance_modelling/output/test_planning/session_2020-09-30_17-09-01_964405_run_000000000
@@ -109,7 +105,7 @@ def compute_metrics(run_output_folder):    # run_output_folder: /home/furkan/ds/
 
 
 def number_of_walls_traversed(feasibility_rate_path, environment_folder):
-    draw_map = 1            # If you do not want to see maps make draw_map = 0
+    draw_map = 0           # If you do not want to see maps make draw_map = 0
 
     feasibility_rate_df = pd.read_csv(feasibility_rate_path)
     ground_truth_map_info_path = path.join(environment_folder, "data", "map.yaml")

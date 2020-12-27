@@ -270,13 +270,12 @@ class BenchmarkRun(object):
         print_info("execute_run: components shutdown completed")
 
         # compute all relevant metrics and visualisations
-        # noinspection PyBroadException
-        try:
-            self.log(event="start_compute_metrics")
-            compute_metrics(self.run_output_folder)                      # open here to calculate metric
-        except:
-            print_error("failed metrics computation")
-            print_error(traceback.format_exc())
+        # try:
+        #     self.log(event="start_compute_metrics")
+        #     compute_metrics(self.run_output_folder)                      # open here to calculate metric
+        # except:
+        #     print_error("failed metrics computation")
+        #     print_error(traceback.format_exc())
 
         self.log(event="run_end")
         print_info("run {run_id} completed".format(run_id=self.run_id))

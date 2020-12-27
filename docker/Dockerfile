@@ -64,8 +64,8 @@ RUN mkdir -p ~/w/catkin_ws/src
 RUN \
   cd ~/w/catkin_ws/src && \
   git clone --branch=master https://github.com/AIRLab-POLIMI/performance_modelling.git && \
-  git clone --branch=melodic-devel https://github.com/fcelitok/global_planning_performance_modelling_pkg.git && \
-  git clone --branch=master https://github.com/fcelitok/move-base-ompl.git && \
+  git clone --branch=melodic-devel https://github.com/fcelitok/global_planning_performance_modelling.git && \
+  git clone --branch=master https://github.com/fcelitok/move_base_ompl.git && \
   git clone --branch=melodic-devel https://github.com/fcelitok/navigation_experimental.git
 
 

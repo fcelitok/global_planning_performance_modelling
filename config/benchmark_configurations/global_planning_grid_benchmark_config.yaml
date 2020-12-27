@@ -1,8 +1,8 @@
-components_configurations_folder: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/config/component_configurations
+components_configurations_folder: ~/w/catkin_ws/src/global_planning_performance_modelling/config/component_configurations
 
 run_timeout : 36000.0
 
-sbpl_primitives_path: ~/turtlebot3_melodic_ws/src/global_planning_performance_modelling/primitives
+sbpl_primitives_path: ~/w/catkin_ws/src/global_planning_performance_modelling/primitives
 
 supervisor_component: global_planning_benchmark_supervisor
 
