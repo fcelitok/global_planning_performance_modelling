@@ -15,8 +15,4 @@ if [ $# -eq 2 ]
         ${USER}/global_planning_benchmark:v1
   else
     echo "usage: $0 container_id cpu_set"
-<<<<<<< HEAD
 fi
-=======
-fi
->>>>>>> 3efb74ecca675cc83f0319a812e7276d94bbe007
