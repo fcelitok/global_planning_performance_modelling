@@ -17,20 +17,20 @@ if __name__ == '__main__':
     parser.add_argument('-e', dest='environment_dataset_folders',
                         help='Dataset folders contain the environment data. Use wildcards to select multiple folders. Only folders are selected, files are ignored.',
                         type=str,
-                        default="~/ds/performance_modelling/test_datasets/dataset/airlab",
+                        default="~/ds/performance_modelling/test_datasets/dataset/*",
                         # when used ~/ds/performance_modelling/test_datasets/dataset/* it will take all environments
                         required=False)
 
     parser.add_argument('-c', dest='grid_benchmark_configuration',
                         help='Yaml file with the configuration of the benchmark.',
                         type=str,
-                        default="~/w/catkin_ws/src/global_planning_performance_modelling/config/benchmark_configurations/global_planning_grid_benchmark_sbpl.yaml",
+                        default="~/w/catkin_ws/src/global_planning_performance_modelling/config/benchmark_configurations/global_planning_grid_benchmark_config.yaml",
                         required=False)
 
     parser.add_argument('-r', dest='base_run_folder',
                         help='Folder in which the result of each run will be placed.',
                         type=str,
-                        default="~/ds/performance_modelling/output/test_planning/",
+                        default="~/ds/performance_modelling/output/test_global_planning/",
                         required=False)
 
     parser.add_argument('-n', '--num-runs', dest='num_runs',
@@ -49,7 +49,7 @@ if __name__ == '__main__':
                         action='store_true',
                         required=False)
 
-    parser.add_argument('-g', '--headless', dest='headless',
+    parser.add_argument('--gui', dest='gui',
                         help='When set the components are run with GUI (opposite of headless).',
                         action='store_true',
                         required=False)
@@ -71,5 +71,5 @@ if __name__ == '__main__':
                            num_runs=args.num_runs,
                            ignore_executed_params_combinations=args.ignore_previous_runs,
                            shuffle=not args.no_shuffle,
-                           headless=args.headless,
+                           headless=not args.gui,
                            show_ros_info=args.show_ros_info)

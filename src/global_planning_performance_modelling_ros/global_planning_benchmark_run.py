@@ -60,7 +60,7 @@ class BenchmarkRun(object):
             planner_type = self.run_parameters['planner_type']
         elif global_planner_name == 'OmplGlobalPlanner':
             planner_type = self.run_parameters['planner_type']
-            # lethal_cost = self.run_parameters['lethal_cost']
+            lethal_cost = self.run_parameters['lethal_cost']
             # TODO add some parameters for OMPL
         else:
             raise ValueError()
@@ -142,7 +142,7 @@ class BenchmarkRun(object):
             # todo
         elif global_planner_name == 'OmplGlobalPlanner':
             move_base_global_planner_configuration['OmplGlobalPlanner']['planner_type'] = planner_type
-            # move_base_global_planner_configuration['OmplGlobalPlanner']['lethal_cost'] = lethal_cost
+            move_base_global_planner_configuration['OmplGlobalPlanner']['lethal_cost'] = lethal_cost
         else:
             raise ValueError()
 
@@ -217,20 +217,23 @@ class BenchmarkRun(object):
         }
         recorder_params = {
             'bag_file_path': path.join(self.run_output_folder, "benchmark_data.bag"),
-            'topics': "/cmd_vel /initialpose /map /map_metadata /map_updates /move_base/DWAPlannerROS/cost_cloud /move_base/DWAPlannerROS/global_plan \
-             /move_base/DWAPlannerROS/local_plan /move_base/DWAPlannerROS/parameter_descriptions /move_base/DWAPlannerROS/parameter_updates \
-             /move_base/DWAPlannerROS/trajectory_cloud /move_base/GlobalPlanner/plan /move_base/NavfnROS/plan /move_base/OmplGlobalPlanner/plan \
-             /move_bas/SBPLLatticePlanner/plan /move_base/SBPLLatticePlanner/sbpl_lattice_planner_stats /move_base/cancel /move_base/current_goal \
-             /move_base/feedback /move_base/global_costmap/costmap /move_base/global_costmap/costmap_updates /move_base/global_costmap/footprint \
-             /move_base/global_costmap/inflation_layer/parameter_descriptions /move_base/global_costmap/inflation_layer/parameter_updates \
-             /move_base/global_costmap/parameter_descriptions /move_base/global_costmap/parameter_updates /move_base/global_costmap/static_layer/parameter_descriptions \
-             /move_base/global_costmap/static_layer/parameter_updates /move_base/goal /move_base/local_costmap/costmap /move_base/local_costmap/costmap_updates \
-             /move_base/local_costmap/footprint /move_base/local_costmap/inflation_layer/parameter_descriptions /move_base/local_costmap/inflation_layer/parameter_updates \
-             /move_base/local_costmap/parameter_descriptions /move_base/local_costmap/parameter_updates /move_base/local_costmap/static_layer/parameter_descriptions \
-             /move_base/local_costmap/static_layer/parameter_updates /move_base/parameter_descriptions /move_base/parameter_updates /move_base/result /move_base/status \
-             /move_base_simple/goal /odom /rosout /rosout_agg /tf /tf_static",
             'output': "log"
         }
+        # recorder_params2 = {
+        #     'bag_file_path': path.join(self.run_output_folder, "benchmark_data2.bag"),
+        #     'topics': "/cmd_vel /initialpose /map /map_metadata /map_updates /move_base/DWAPlannerROS/cost_cloud /move_base/DWAPlannerROS/global_plan \
+        #                  /move_base/DWAPlannerROS/local_plan /move_base/DWAPlannerROS/parameter_descriptions /move_base/DWAPlannerROS/parameter_updates \
+        #                  /move_base/DWAPlannerROS/trajectory_cloud /move_base/(.*)/plan /move_base/SBPLLatticePlanner/sbpl_lattice_planner_stats /move_base/cancel /move_base/current_goal \
+        #                  /move_base/feedback /move_base/global_costmap/costmap /move_base/global_costmap/costmap_updates /move_base/global_costmap/footprint \
+        #                  /move_base/global_costmap/inflation_layer/parameter_descriptions /move_base/global_costmap/inflation_layer/parameter_updates \
+        #                  /move_base/global_costmap/parameter_descriptions /move_base/global_costmap/parameter_updates /move_base/global_costmap/static_layer/parameter_descriptions \
+        #                  /move_base/global_costmap/static_layer/parameter_updates /move_base/goal /move_base/local_costmap/costmap /move_base/local_costmap/costmap_updates \
+        #                  /move_base/local_costmap/footprint /move_base/local_costmap/inflation_layer/parameter_descriptions /move_base/local_costmap/inflation_layer/parameter_updates \
+        #                  /move_base/local_costmap/parameter_descriptions /move_base/local_costmap/parameter_updates /move_base/local_costmap/static_layer/parameter_descriptions \
+        #                  /move_base/local_costmap/static_layer/parameter_updates /move_base/parameter_descriptions /move_base/parameter_updates /move_base/result /move_base/status \
+        #                  /move_base_simple/goal /odom /rosout /rosout_agg /tf /tf_static",
+        #     'output': "log"
+        # }
 
 
         # declare components
@@ -239,7 +242,8 @@ class BenchmarkRun(object):
         rviz = Component('rviz', 'global_planning_performance_modelling', 'rviz.launch', rviz_params)
         navigation = Component('move_base', 'global_planning_performance_modelling', 'move_base.launch', navigation_params)
         supervisor = Component('supervisor', 'global_planning_performance_modelling', 'global_planning_benchmark_supervisor.launch', supervisor_params)
-        # recorder = Component('recorder', 'global_planning_performance_modelling', 'rosbag_recorder.launch', recorder_params)
+        recorder = Component('recorder', 'global_planning_performance_modelling', 'rosbag_recorder.launch', recorder_params)
+        # recorder2 = Component('recorder', 'global_planning_performance_modelling', 'rosbag_recorder2.launch', recorder_params2)
 
         # launch roscore and setup a node to monitor ros
         roscore.launch()
@@ -249,7 +253,8 @@ class BenchmarkRun(object):
         rviz.launch()
         navigation.launch()
         supervisor.launch()
-        # recorder.launch()
+        recorder.launch()
+        # recorder2.launch()
 
         # launch components and wait for the supervisor to finish
         self.log(event="waiting_supervisor_finish")
@@ -266,7 +271,8 @@ class BenchmarkRun(object):
         navigation.shutdown()
         rviz.shutdown()
         roscore.shutdown()
-        # recorder.shutdown()
+        recorder.shutdown()
+        # recorder2.shutdown()
         print_info("execute_run: components shutdown completed")
 
         # compute all relevant metrics and visualisations

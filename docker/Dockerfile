@@ -33,6 +33,7 @@ RUN \
     ros-melodic-move-base \
     ros-melodic-global-planner \
     ros-melodic-dwa-local-planner \
+    ros-melodic-filters \
     ros-melodic-sbpl \
     ros-melodic-sbpl-dbgsym \
     ros-melodic-sbpl-recovery \

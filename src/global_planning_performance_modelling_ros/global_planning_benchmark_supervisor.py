@@ -94,12 +94,14 @@ class GlobalPlanningBenchmarkSupervisor:
         self.path_receive = False
         self.path_aborted = False
         self.path_distance_token = False
+        self.path_and_goal_write_token = False      # If this is false it will not write csv file to your path goal and initial points
         self.pathCounter = 0
+        self.all_path_counter = 0
         self.initial_pose_counter = 1
         self.execution_timer = 0
         self.execution_timer2 = 0
 
-        self.random_points = 1  # define for how many random path will draw
+        self.random_points = 0  # define for how many random path will draw
 
         # self.total_paths = 0
         self.feasible_paths = 0
@@ -128,7 +130,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.mean_passage_width_file_path = path.join(self.plan_output_folder, 'mean_passage_width.csv')
         self.minimum_passage_width_file_path = path.join(self.plan_output_folder, 'minimum_passage_width.csv')
         self.mean_normalized_passage_width_file_path = path.join(self.plan_output_folder, 'mean_normalized_passage_width.csv')
-        self.init_run_events_file()
+        # self.init_run_events_file()  # closed because added new pandas data frame file write function
 
         # setup publishers
         self.initial_pose_publisher = rospy.Publisher(initial_pose_topic, PoseWithCovarianceStamped, queue_size=10)
@@ -138,6 +140,7 @@ class GlobalPlanningBenchmarkSupervisor:
         # self.vor_path_pub = rospy.Publisher('xxx', Path, queue_size=10)
 
         # pandas dataframes for benchmark data
+        self.run_events_df = pd.DataFrame(columns=['time', 'event'])
         self.execution_time_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'time'])
         self.voronoi_distance_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'voronoi_distance'])
         self.euclidean_distance_df = pd.DataFrame(columns=['node_i', 'i_x', 'i_y', 'node_g', 'g_x', 'g_y', 'euclidean_distance'])
@@ -176,7 +179,7 @@ class GlobalPlanningBenchmarkSupervisor:
         # self.start_run(initial_node=initial_node_key, goal_node=goal_node_key)
 
         # send initial node and goal node
-        self.write_event('run_start')
+        self.write_event('run_start', rospy.Time.now().to_sec())
         for initial_node_key, goal_node_value in self.initial_goal_dict.items():
             for goal_node in goal_node_value:
                 self.start_run(initial_node=initial_node_key, goal_node=goal_node)
@@ -198,6 +201,8 @@ class GlobalPlanningBenchmarkSupervisor:
             self.ground_truth_map.voronoi_graph.nodes
         )).copy()
 
+        self.all_path_counter = len(self.voronoi_graph.nodes) + (len(self.voronoi_graph.nodes)*self.random_points)
+
         minimum_length_paths = nx.all_pairs_dijkstra_path(self.voronoi_graph, weight='voronoi_path_distance')
         minimum_length_costs = dict(nx.all_pairs_dijkstra_path_length(self.voronoi_graph, weight='voronoi_path_distance'))
         costs = defaultdict(dict)
@@ -216,7 +221,7 @@ class GlobalPlanningBenchmarkSupervisor:
             self.voronoi_graph.remove_nodes_from(graph_component)
 
         if len(self.voronoi_graph.nodes) < 2:
-            self.write_event('insufficient_number_of_nodes_in_deleaved_reduced_voronoi_graph')
+            self.write_event('insufficient_number_of_nodes_in_deleaved_reduced_voronoi_graph', rospy.Time.now().to_sec())
             raise RunFailException(
                 "insufficient number of nodes in deleaved_reduced_voronoi_graph, can not generate traversal path")
 
@@ -244,7 +249,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
             remove_list = [initial_node, farthest_node]
 
-            if self.random_points < len(self.voronoi_graph.nodes)-1:
+            if 0 <= self.random_points < len(self.voronoi_graph.nodes)-1:
                 random_final_point_list = random.sample(list(set(list(self.voronoi_graph.node)) - set(remove_list)), self.random_points)
             else:
                 print_error("Cannot select random points more than nodes")
@@ -385,7 +390,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def start_run(self, initial_node, goal_node):
         print_info("prepare start run for each path ")
-        self.write_event('prepare_start_run_for_each_path')
+        self.write_event('prepare_start_run_for_each_path', rospy.Time.now().to_sec())
         self.send_initial_node = initial_node
         self.send_goal_node = goal_node
 
@@ -428,12 +433,12 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # self.traversal_path_publisher.publish(self.traversal_path_msg)  #traversal path publisher for visualization
 
-        self.write_event('start_run_for_each_path')
+        self.write_event('start_run_for_each_path', rospy.Time.now().to_sec())
 
         # goal node send
         if not self.navigate_to_pose_action_client.wait_for_server(
                 timeout=rospy.Duration.from_sec(5.0)):  # just for control duration time is not important in here
-            self.write_event('failed_to_communicate_with_navigation_node')
+            self.write_event('failed_to_communicate_with_navigation_node', rospy.Time.now().to_sec())
             raise RunFailException("navigate_to_pose action server not available")
 
         maxGoalPose = MoveBaseGoal()
@@ -442,10 +447,10 @@ class GlobalPlanningBenchmarkSupervisor:
         maxGoalPose.target_pose.pose = goal_node_pose
 
         self.goal_send_count += 1
-        print("counter:{}. For initial node {}, sending goal node {} ".format(self.goal_send_count, initial_node, goal_node))
+        print("counter:{}/{}. For initial node {}, sending goal node {} ".format(self.goal_send_count, self.all_path_counter, initial_node, goal_node))
         # self.navigate_to_pose_action_client.send_goal_and_wait(maxGoalPose,execute_timeout=rospy.Duration.from_sec(1.0)),
         self.navigate_to_pose_action_client.send_goal(maxGoalPose, done_cb=self.done_cb, active_cb=self.active_cb)
-        self.write_event('target_pose_set')
+        self.write_event('target_pose_set', rospy.Time.now().to_sec())
         # self.navigate_to_pose_action_client.wait_for_result(rospy.Duration.from_sec(1.0))
 
         rospy.sleep(0.5)
@@ -458,8 +463,8 @@ class GlobalPlanningBenchmarkSupervisor:
                 self.feasibility_rate(initial_node, goal_node, initial_node_pose, goal_node_pose, feasibility_token)
                 self.navigate_to_pose_action_client.cancel_all_goals()
                 self.navigate_to_pose_action_client.wait_for_result(rospy.Duration.from_sec(5.0))
-                self.write_event('target_pose_reached')
-                self.write_event('finish_run_for_each_path')
+                self.write_event('target_pose_reached', rospy.Time.now().to_sec())
+                self.write_event('finish_run_for_each_path', rospy.Time.now().to_sec())
                 print_info("PATH RECEIVED")
                 break
             if self.path_aborted:
@@ -470,8 +475,8 @@ class GlobalPlanningBenchmarkSupervisor:
                 self.feasibility_rate(initial_node, goal_node, initial_node_pose, goal_node_pose, feasibility_token)
                 self.navigate_to_pose_action_client.cancel_all_goals()
                 self.navigate_to_pose_action_client.wait_for_result(rospy.Duration.from_sec(5.0))
-                self.write_event('target_pose_aborted')
-                self.write_event('finish_run_for_each_path')
+                self.write_event('target_pose_aborted', rospy.Time.now().to_sec())
+                self.write_event('finish_run_for_each_path', rospy.Time.now().to_sec())
                 print_info("PATH ABORTED. Counter: ", self.aborted_path_counter)
                 break
 
@@ -483,9 +488,9 @@ class GlobalPlanningBenchmarkSupervisor:
                         initial_node_pose.position.y - latest_initial_path_pose.pose.position.y) ** 2)
             print_info("Distance: ", distance_from_initial)
             if distance_from_initial < self.goal_tolerance:
-                self.write_event('initial_pose_true')
+                self.write_event('initial_pose_true', rospy.Time.now().to_sec())
             else:
-                self.write_event('away_from_initial_pose')
+                self.write_event('away_from_initial_pose', rospy.Time.now().to_sec())
                 print_error("current position farther from initial position than tolerance")
 
             latest_goal_path_pose = self.latest_path.poses[-1]
@@ -493,13 +498,13 @@ class GlobalPlanningBenchmarkSupervisor:
                     goal_node_pose.position.y - latest_goal_path_pose.pose.position.y) ** 2)
             print_info("Distance: ", distance_from_goal)
             if distance_from_goal < self.goal_tolerance:
-                self.write_event('goal_pose_true')
+                self.write_event('goal_pose_true', rospy.Time.now().to_sec())
             else:
-                self.write_event('away_from_goal_pose')
+                self.write_event('away_from_goal_pose', rospy.Time.now().to_sec())
                 print_error("current position farther from goal position than tolerance")
 
         if self.goal_send_count == len(self.initial_goal_dict)*(self.random_points + 1):
-            self.write_event('run_completed')
+            self.write_event('run_completed', rospy.Time.now().to_sec())
             rospy.signal_shutdown("run_completed")
 
     # def longest_path_publisher_callback(self, initial_node):
@@ -548,22 +553,23 @@ class GlobalPlanningBenchmarkSupervisor:
             self.euclidean_distance_callback(path_message, self.send_initial_node, self.send_goal_node, self.send_initial_node_pose, self.send_goal_node_pose)
             self.path_receive = True
             self.latest_path = path_message
-            # msg_time = pathMessage.header.stamp.to_sec()
-            for pose in path_message.poses:
-                msg_time = pose.header.stamp.to_sec()
-                with open(self.received_plan_file_path, 'a') as path_file:
-                    path_file.write(
-                        "{counter}, {t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
-                            counter=self.pathCounter,
-                            t=msg_time,
-                            positionX=pose.pose.position.x,
-                            positionY=pose.pose.position.y,
-                            positionZ=pose.pose.position.z,
-                            orientationX=pose.pose.orientation.x,
-                            orientationY=pose.pose.orientation.y,
-                            orientationZ=pose.pose.orientation.z,
-                            orientationW=pose.pose.orientation.w
-                        ))
+
+            if self.path_and_goal_write_token:
+                for pose in path_message.poses:
+                    msg_time = pose.header.stamp.to_sec()
+                    with open(self.received_plan_file_path, 'a') as path_file:
+                        path_file.write(
+                            "{counter}, {t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
+                                counter=self.pathCounter,
+                                t=msg_time,
+                                positionX=pose.pose.position.x,
+                                positionY=pose.pose.position.y,
+                                positionZ=pose.pose.position.z,
+                                orientationX=pose.pose.orientation.x,
+                                orientationY=pose.pose.orientation.y,
+                                orientationZ=pose.pose.orientation.z,
+                                orientationW=pose.pose.orientation.w
+                            ))
 
     def euclidean_distance_callback(self, pathMessage, i_point, g_point, i_node_pose, g_node_pose):
         try:
@@ -602,34 +608,37 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def initial_pose_callback(self, initial_pose_msg):
         self.initial_pose_counter += 1
-        msg_time = initial_pose_msg.header.stamp.to_sec()
-        with open(self.initial_pose_file_path, 'a') as initial_pose_file:
-            initial_pose_file.write(
-                "{t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
-                    t=msg_time,
-                    positionX=initial_pose_msg.pose.pose.position.x,
-                    positionY=initial_pose_msg.pose.pose.position.y,
-                    positionZ=initial_pose_msg.pose.pose.position.z,
-                    orientationX=initial_pose_msg.pose.pose.orientation.x,
-                    orientationY=initial_pose_msg.pose.pose.orientation.y,
-                    orientationZ=initial_pose_msg.pose.pose.orientation.z,
-                    orientationW=initial_pose_msg.pose.pose.orientation.w
-                ))
+
+        if self.path_and_goal_write_token:
+            msg_time = initial_pose_msg.header.stamp.to_sec()
+            with open(self.initial_pose_file_path, 'a') as initial_pose_file:
+                initial_pose_file.write(
+                    "{t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
+                        t=msg_time,
+                        positionX=initial_pose_msg.pose.pose.position.x,
+                        positionY=initial_pose_msg.pose.pose.position.y,
+                        positionZ=initial_pose_msg.pose.pose.position.z,
+                        orientationX=initial_pose_msg.pose.pose.orientation.x,
+                        orientationY=initial_pose_msg.pose.pose.orientation.y,
+                        orientationZ=initial_pose_msg.pose.pose.orientation.z,
+                        orientationW=initial_pose_msg.pose.pose.orientation.w
+                    ))
 
     def goal_callback(self, goal_msg):
-        msg_time = goal_msg.header.stamp.to_sec()
-        with open(self.goal_pose_file_path, 'a') as goal_file:
-            goal_file.write(
-                "{t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
-                    t=msg_time,
-                    positionX=goal_msg.goal.target_pose.pose.position.x,
-                    positionY=goal_msg.goal.target_pose.pose.position.y,
-                    positionZ=goal_msg.goal.target_pose.pose.position.z,
-                    orientationX=goal_msg.goal.target_pose.pose.orientation.x,
-                    orientationY=goal_msg.goal.target_pose.pose.orientation.y,
-                    orientationZ=goal_msg.goal.target_pose.pose.orientation.z,
-                    orientationW=goal_msg.goal.target_pose.pose.orientation.w
-                ))
+        if self.path_and_goal_write_token:
+            msg_time = goal_msg.header.stamp.to_sec()
+            with open(self.goal_pose_file_path, 'a') as goal_file:
+                goal_file.write(
+                    "{t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
+                        t=msg_time,
+                        positionX=goal_msg.goal.target_pose.pose.position.x,
+                        positionY=goal_msg.goal.target_pose.pose.position.y,
+                        positionZ=goal_msg.goal.target_pose.pose.position.z,
+                        orientationX=goal_msg.goal.target_pose.pose.orientation.x,
+                        orientationY=goal_msg.goal.target_pose.pose.orientation.y,
+                        orientationZ=goal_msg.goal.target_pose.pose.orientation.z,
+                        orientationW=goal_msg.goal.target_pose.pose.orientation.w
+                    ))
 
     def voronoi_distance_callback(self, i_point, g_point, i_node_pose, g_node_pose):
         try:
@@ -700,28 +709,42 @@ class GlobalPlanningBenchmarkSupervisor:
         This function is called when the node receives an interrupt signal (KeyboardInterrupt).
         """
         print_info("asked to shutdown, terminating run")
-        self.write_event('ros_shutdown')
-        self.write_event('supervisor_finished')
+        self.write_event('ros_shutdown', rospy.Time.now().to_sec())
+        self.write_event('supervisor_finished', rospy.Time.now().to_sec())
 
-    def init_run_events_file(self):
+    # def init_run_events_file(self):    # closed because we return to pandas data frame.
+    #     backup_file_if_exists(self.run_events_file_path)
+    #     try:
+    #         with open(self.run_events_file_path, 'w') as run_events_file:
+    #             run_events_file.write("{t}, {event}\n".format(t='timestamp', event='event'))
+    #     except IOError:
+    #         rospy.logerr("slam_benchmark_supervisor.init_event_file: could not write header to run_events_file")
+    #         rospy.logerr(traceback.format_exc())
+    #
+    # def write_event(self, event):
+    #     t = rospy.Time.now().to_sec()
+    #     print_info("t: {t}, event: {event}".format(t=t, event=str(event)))
+    #     try:
+    #         with open(self.run_events_file_path, 'a') as run_events_file:
+    #             run_events_file.write("{t}, {event}\n".format(t=t, event=str(event)))
+    #     except IOError:
+    #         rospy.logerr(
+    #             "slam_benchmark_supervisor.write_event: could not write event to run_events_file: {t} {event}".format(
+    #                 t=t, event=str(event)))
+    #         rospy.logerr(traceback.format_exc())
+
+    def write_event(self, event, time):
         backup_file_if_exists(self.run_events_file_path)
+        print_info("t: {t}, event: {event}".format(t=time, event=str(event)))
         try:
-            with open(self.run_events_file_path, 'w') as run_events_file:
-                run_events_file.write("{t}, {event}\n".format(t='timestamp', event='event'))
-        except IOError:
-            rospy.logerr("slam_benchmark_supervisor.init_event_file: could not write header to run_events_file")
-            rospy.logerr(traceback.format_exc())
-
-    def write_event(self, event):
-        t = rospy.Time.now().to_sec()
-        print_info("t: {t}, event: {event}".format(t=t, event=str(event)))
-        try:
-            with open(self.run_events_file_path, 'a') as run_events_file:
-                run_events_file.write("{t}, {event}\n".format(t=t, event=str(event)))
+            self.run_events_df = self.run_events_df.append({
+                'time': time,
+                'event': event
+            }, ignore_index=True)
         except IOError:
             rospy.logerr(
                 "slam_benchmark_supervisor.write_event: could not write event to run_events_file: {t} {event}".format(
-                    t=t, event=str(event)))
+                    t=time, event=str(event)))
             rospy.logerr(traceback.format_exc())
 
     def end_run(self):
@@ -729,6 +752,7 @@ class GlobalPlanningBenchmarkSupervisor:
         This function is called after the run has completed, whether the run finished correctly, or there was an exception.
         The only case in which this function is not called is if an exception was raised from self.__init__
         """
+        self.run_events_df.to_csv(self.run_events_file_path, index=False)
         self.execution_time_df.to_csv(self.execution_time_file_path, index=False)
         self.voronoi_distance_df.to_csv(self.voronoi_distance_file_path, index=False)
         self.euclidean_distance_df.to_csv(self.euclidean_distance_file_path, index=False)
@@ -739,7 +763,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def run_timeout_callback(self, _):
         print_error("terminating supervisor due to timeout, terminating run")
-        self.write_event('run_timeout')
-        self.write_event('supervisor_finished')
+        self.write_event('run_timeout', rospy.Time.now().to_sec())
+        self.write_event('supervisor_finished', rospy.Time.now().to_sec())
         rospy.signal_shutdown("Signal Shutdown because of run time out.")
         raise RunFailException("run_timeout")
