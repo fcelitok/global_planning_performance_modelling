@@ -76,7 +76,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.robot_entity_name = rospy.get_param('~robot_entity_name')
         self.robot_radius = rospy.get_param('~robot_radius')
         self.goal_tolerance = rospy.get_param('~goal_tolerance')
-        self.random_points = rospy.get_param('~random_points')  # define for how many random path will draw
+        self.random_points = rospy.get_param('~random_points')          # define for how many random path will draw
 
         # file system paths
         self.run_output_folder = rospy.get_param('~run_output_folder')
@@ -101,8 +101,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.initial_pose_counter = 1
         self.execution_timer = 0
         self.execution_timer2 = 0
-
-        
+  
 
         # self.total_paths = 0
         self.feasible_paths = 0
