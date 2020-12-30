@@ -243,7 +243,7 @@ def collect_data(base_run_folder_path, invalidate_cache=False):
 
 
 if __name__ == '__main__':
-    default_base_run_folder = "~/ds/performance_modelling/output/test_planning"
+    default_base_run_folder = "~/ds/performance_modelling/output/test_global_planning"
 
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description='Execute the analysis of the benchmark results.')
     parser.add_argument('-r', dest='base_run_folder',

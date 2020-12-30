@@ -350,7 +350,7 @@ def normalised_plan_length(euclidean_path, voronoi_path):
 
 if __name__ == '__main__':
     import traceback
-    run_folders = sorted(list(filter(path.isdir, glob.glob(path.expanduser("~/ds/performance_modelling/output/test_planning/*")))))
+    run_folders = sorted(list(filter(path.isdir, glob.glob(path.expanduser("~/ds/performance_modelling/output/test_global_planning/*")))))
 
     for progress, run_folder in enumerate(run_folders):
         print_info("main: compute_metrics {}% {}".format((progress + 1)*100/len(run_folders), run_folder))

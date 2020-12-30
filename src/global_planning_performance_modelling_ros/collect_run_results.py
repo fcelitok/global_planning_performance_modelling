@@ -184,7 +184,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', dest='base_run_folder',
                         help='Folder containing the result the runs. Defaults to ~/ds/performance_modelling/output/test_localization/',
                         type=str,
-                        default="~/ds/performance_modelling/output/test_planning",
+                        default="~/ds/performance_modelling/output/test_global_planning",
                         required=False)
 
     parser.add_argument('-i', dest='invalidate_cache',
@@ -197,16 +197,16 @@ if __name__ == '__main__':
 
     run_data_df, params = collect_data(args.base_run_folder, args.invalidate_cache)
     run_data_df = pd.DataFrame(run_data_df)
-    # print(run_data_df)
+    print(run_data_df)
     # print(" ")
     # print (params)
-    mean_of_ARAPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ARAPlanner')['normalised_planning_time'].mean()
-    mean_of_ADPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_planning_time'].mean()
-    mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
-    mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
+    #mean_of_ARAPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ARAPlanner')['normalised_planning_time'].mean()
+    #mean_of_ADPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_planning_time'].mean()
+    #mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
+    #mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
     # print(mean_of_ARAPlanner_normalised_planning_time)
     # print("")
     # print(mean_of_ADPlanner_normalised_planning_time)
-    plt.bar([1, 2, 3, 4], [mean_of_ARAPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_plan_length, mean_of_ADPlanner_normalised_plan_length])
-    plt.show()
-    print(run_data_df.groupby(by=list(params))['run_folder'].count())
+    #plt.bar([1, 2, 3, 4], [mean_of_ARAPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_plan_length, mean_of_ADPlanner_normalised_plan_length])
+    # plt.show()
+    #print(run_data_df.groupby(by=list(params))['run_folder'].count())
