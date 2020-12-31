@@ -187,6 +187,18 @@ def collect_data(base_run_folder_path, invalidate_cache=False):
                             'g_x'], minimum_passage_width_per_waypoint[
                             'g_y']] = minimum_passage_width_per_waypoint
 
+        number_of_walls_traversed_per_waypoint_dict = dict()
+        number_of_walls_traversed_per_waypoint_list = get_yaml_by_path(metrics_dict, ['number_of_walls_traversed'])
+        if number_of_walls_traversed_per_waypoint_list is not None:
+            for number_of_walls_traversed_per_waypoint in number_of_walls_traversed_per_waypoint_list:
+                if number_of_walls_traversed_per_waypoint is not None and 'i_x' and 'i_y' and 'g_x' and 'g_y' in number_of_walls_traversed_per_waypoint:
+                    number_of_walls_traversed_per_waypoint_dict[
+                        number_of_walls_traversed_per_waypoint[
+                            'i_x'], number_of_walls_traversed_per_waypoint[
+                            'i_y'], number_of_walls_traversed_per_waypoint[
+                            'g_x'], number_of_walls_traversed_per_waypoint[
+                            'g_y']] = number_of_walls_traversed_per_waypoint
+
         for waypoint_position in minimum_passage_width_per_waypoint_dict.keys():
             run_record_per_waypoint = run_record.copy()
 
@@ -225,6 +237,11 @@ def collect_data(base_run_folder_path, invalidate_cache=False):
             if minimum_passage_width_metrics is not None:
                 for minimum_passage_width_metrics_name, minimum_passage_width_metric_value in minimum_passage_width_metrics.items():
                     run_record_per_waypoint['minimum_passage_width_' + minimum_passage_width_metrics_name] = minimum_passage_width_metric_value
+
+            number_of_walls_traversed_metrics = get_yaml_by_path(number_of_walls_traversed_per_waypoint_dict, [waypoint_position])
+            if number_of_walls_traversed_metrics is not None:
+                for number_of_walls_traversed_metrics_name, number_of_walls_traversed_metric_value in number_of_walls_traversed_metrics.items():
+                    run_record_per_waypoint['number_of_walls_traversed_' + number_of_walls_traversed_metrics_name] = number_of_walls_traversed_metric_value
 
             record_list.append(run_record_per_waypoint)
 

@@ -93,7 +93,7 @@ def collect_data(base_run_folder_path, invalidate_cache=False):
             run_record['failure_rate'] = 0
 
             try:
-                run_events = get_csv(path.join(benchmark_data_folder, "run_events.csv"))
+                run_events = pd.read_csv(path.join(benchmark_data_folder, "run_events.csv"))
                 metrics_dict = get_yaml(path.join(metric_results_folder, "metrics.yaml"))
             except IOError:
                 run_record['failure_rate'] = 1
@@ -102,7 +102,7 @@ def collect_data(base_run_folder_path, invalidate_cache=False):
 
             feasibility_rate = metrics_dict['feasibility_rate'] if 'feasibility_rate' in metrics_dict else None
             run_record['feasibility_rate'] = feasibility_rate
-            if (0.0 > feasibility_rate > 1.0) or feasibility_rate is None:
+            if feasibility_rate is None:
                 run_record['failure_rate'] = 1
                 df = df.append(run_record, ignore_index=True)
                 continue
@@ -131,22 +131,22 @@ def collect_data(base_run_folder_path, invalidate_cache=False):
                 df = df.append(run_record, ignore_index=True)
                 continue
 
-            if len(run_events[run_events["event"] == "run_start"]["timestamp"]) == 0:
+            if len(run_events[run_events["event"] == "run_start"]["time"]) == 0:
                 print_error("collect_data: run_start event does not exists")
                 no_output = False
                 run_record['failure_rate'] = 1
                 df = df.append(run_record, ignore_index=True)
                 continue
 
-            if len(run_events[run_events["event"] == "run_completed"]["timestamp"]) == 0:
+            if len(run_events[run_events["event"] == "run_completed"]["time"]) == 0:
                 print_error("collect_data: run_completed event does not exists")
                 no_output = False
                 run_record['failure_rate'] = 1
                 df = df.append(run_record, ignore_index=True)
                 continue
 
-            run_start_time = float(run_events[run_events["event"] == "run_start"]["timestamp"])
-            supervisor_finish_time = float(run_events[run_events["event"] == "run_completed"]["timestamp"])
+            run_start_time = float(run_events[run_events["event"] == "run_start"]["time"])
+            supervisor_finish_time = float(run_events[run_events["event"] == "run_completed"]["time"])
             run_execution_time = supervisor_finish_time - run_start_time
             run_record['run_execution_time'] = run_execution_time
 
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter, description='Execute the analysis of the benchmark results.')
 
     parser.add_argument('-r', dest='base_run_folder',
-                        help='Folder containing the result the runs. Defaults to ~/ds/performance_modelling/output/test_localization/',
+                        help='Folder containing the result the runs. Defaults to ~/ds/performance_modelling/output/test_global_planning/',
                         type=str,
                         default="~/ds/performance_modelling/output/test_global_planning",
                         required=False)
@@ -198,15 +198,15 @@ if __name__ == '__main__':
     run_data_df, params = collect_data(args.base_run_folder, args.invalidate_cache)
     run_data_df = pd.DataFrame(run_data_df)
     print(run_data_df)
-    # print(" ")
-    # print (params)
-    #mean_of_ARAPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ARAPlanner')['normalised_planning_time'].mean()
-    #mean_of_ADPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_planning_time'].mean()
-    #mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
-    #mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
+    print(" ")
+    print (params)
+    # mean_of_ARAPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ARAPlanner')['normalised_planning_time'].mean()
+    # mean_of_ADPlanner_normalised_planning_time = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_planning_time'].mean()
+    # mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
+    # mean_of_ADPlanner_normalised_plan_length = run_data_df.where(run_data_df['planner_type'] == 'ADPlanner')['normalised_plan_length'].mean()
     # print(mean_of_ARAPlanner_normalised_planning_time)
     # print("")
     # print(mean_of_ADPlanner_normalised_planning_time)
-    #plt.bar([1, 2, 3, 4], [mean_of_ARAPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_plan_length, mean_of_ADPlanner_normalised_plan_length])
+    # plt.bar([1, 2, 3, 4], [mean_of_ARAPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_planning_time, mean_of_ADPlanner_normalised_plan_length, mean_of_ADPlanner_normalised_plan_length])
     # plt.show()
-    #print(run_data_df.groupby(by=list(params))['run_folder'].count())
+    # print(run_data_df.groupby(by=list(params))['run_folder'].count())
