@@ -16,5 +16,9 @@ components_configuration:
 
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
   global_planner_name: [SBPLLatticePlanner]
-  sbpl_primitives_name: [matteo_mprim_16_10deg_10_version3.mprim, matteo_mprim_16_20deg_10_version3.mprim, matteo_mprim_16_35deg_10_version3.mprim, matteo_mprim_16_90deg_10_version3.mprim]
-  planner_type: [ADPlanner, ARAPlanner]
+#  sbpl_primitives_name: [matteo_mprim_16_10deg_10_version3.mprim, matteo_mprim_16_20deg_10_version3.mprim, matteo_mprim_16_35deg_10_version3.mprim, matteo_mprim_16_90deg_10_version3.mprim]
+#  sbpl_primitives_name: [new_version_forward_backward_02_40.mprim]
+#  sbpl_primitives_name: [generated_primitives.txt]
+  sbpl_primitives_name: [v8_forward_backward_065_50_lin_ang1.mprim]  
+  planner_type: [ADPlanner]
+

@@ -24,18 +24,16 @@ combinatorial_parameters: [
   {
     global_planner_name: [OmplGlobalPlanner],
     planner_type: [RRTStar, RRTConnect, PRMStar],
-    lethal_cost: [50, 100, 253]
+    lethal_cost: [50, 100, 253],
   },
   { 
     global_planner_name: [SBPLLatticePlanner],
     sbpl_primitives_name: [genmprim_unicycle_16_prim7_10.mprim, genmprim_unicycle_16_prim9_10.mprim, genmprim_unicycle_16_prim11_10.mprim],
-    planner_type: [ADPlanner, ARAPlanner],
+    planner_type: [ADPlanner],
   },
   { 
     global_planner_name: [SBPLLatticePlanner],
-    sbpl_primitives_name: [matteo_mprim_16_10deg_10_version3.mprim, matteo_mprim_16_20deg_10_version3.mprim, matteo_mprim_16_35deg_10_version3.mprim, matteo_mprim_16_90deg_10_version3.mprim],
-    planner_type: [ADPlanner, ARAPlanner],
-  },  
-  
-
+    sbpl_primitives_name: [v8_forward_backward_065_15_lin_ang1.mprim, v8_forward_backward_065_15_lin_ang2.mprim, v8_forward_backward_065_25_lin_ang1.mprim, v8_forward_backward_065_25_lin_ang2.mprim, v8_forward_backward_065_50_lin_ang1.mprim, v8_forward_backward_065_50_lin_ang2.mprim ],
+    planner_type: [ADPlanner],
+  },
 ]

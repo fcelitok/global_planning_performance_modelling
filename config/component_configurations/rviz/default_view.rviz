@@ -133,11 +133,11 @@ Visualization Manager:
       Class: rviz/Pose
       Color: 255; 25; 0
       Enabled: true
-      Head Length: 0.4000000059604645
-      Head Radius: 0.20000000298023224
+      Head Length: 0.6000000238418579
+      Head Radius: 0.4000000059604645
       Name: Goal_pose
-      Shaft Length: 0.5
-      Shaft Radius: 0.05000000074505806
+      Shaft Length: 0.699999988079071
+      Shaft Radius: 0.10000000149011612
       Shape: Arrow
       Topic: /move_base/current_goal
       Unreliable: false
@@ -163,11 +163,11 @@ Visualization Manager:
           Value: true
         Value: true
       Enabled: true
-      Head Length: 0.30000001192092896
-      Head Radius: 0.10000000149011612
+      Head Length: 0.5
+      Head Radius: 0.30000001192092896
       Name: PoseWithCovariance
-      Shaft Length: 0.5
-      Shaft Radius: 0.05999999865889549
+      Shaft Length: 0.699999988079071
+      Shaft Radius: 0.10000000149011612
       Shape: Arrow
       Topic: /initialpose
       Unreliable: false
@@ -356,5 +356,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 962
-  X: 138
-  Y: 43
+  X: 55
+  Y: 27

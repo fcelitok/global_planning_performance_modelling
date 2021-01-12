@@ -134,7 +134,8 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # setup publishers
         self.initial_pose_publisher = rospy.Publisher(initial_pose_topic, PoseWithCovarianceStamped, queue_size=10)
-        self.voronoi_publisher = rospy.Publisher('VoronoiPointCloud', PointCloud, queue_size=10)
+        if self.path_and_goal_write_token:
+            self.voronoi_publisher = rospy.Publisher('VoronoiPointCloud', PointCloud, queue_size=10)
         # TODO check path or point cloud
         # self.voronoi_longest_path_publisher = rospy.Publisher('Longest_voronoi_path', PointCloud, queue_size=10)
         # self.vor_path_pub = rospy.Publisher('xxx', Path, queue_size=10)
@@ -193,11 +194,11 @@ class GlobalPlanningBenchmarkSupervisor:
         print_info("Entered -> deleaved reduced Voronoi graph from ground truth map")
 
         # get deleaved reduced Voronoi graph from ground truth map
-        self.voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=2 * self.robot_radius).copy()
+        self.voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=1 * self.robot_radius).copy()
 
         # get all voronoi graph nodes from ground truth map
         self.real_voronoi_graph = self.ground_truth_map.voronoi_graph.subgraph(filter(
-            lambda n: self.ground_truth_map.voronoi_graph.nodes[n]['radius'] >= 2 * self.robot_radius,
+            lambda n: self.ground_truth_map.voronoi_graph.nodes[n]['radius'] >= 1 * self.robot_radius,
             self.ground_truth_map.voronoi_graph.nodes
         )).copy()
 
@@ -281,15 +282,15 @@ class GlobalPlanningBenchmarkSupervisor:
                 self.mean_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, node_diameter_mean)
                 self.mean_normalized_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, normalized_node_diameter_mean)
                 self.minimum_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, minimum_node_diameter)
-
-        point = Point32()
-        self.point_cloud = PointCloud()
-        self.point_cloud.header.stamp = rospy.Time.now()
-        self.point_cloud.header.frame_id = 'map'
-        for pose in list(self.real_voronoi_graph.nodes):
-            point.x, point.y = self.real_voronoi_graph.nodes[pose]['vertex']
-            point.z = 0.0
-            self.point_cloud.points.append(Point32(point.x, point.y, point.z))
+        if self.path_and_goal_write_token:
+            point = Point32()
+            self.point_cloud = PointCloud()
+            self.point_cloud.header.stamp = rospy.Time.now()
+            self.point_cloud.header.frame_id = 'map'
+            for pose in list(self.real_voronoi_graph.nodes):
+                point.x, point.y = self.real_voronoi_graph.nodes[pose]['vertex']
+                point.z = 0.0
+                self.point_cloud.points.append(Point32(point.x, point.y, point.z))
 
     def pose_finder(self, start_node, final_node):
 
@@ -366,6 +367,7 @@ class GlobalPlanningBenchmarkSupervisor:
             rospy.sleep(1.0)
         elif status == GoalStatus.PENDING:
             rospy.logwarn("Goal pose " + str(self.goal_send_count) + " has yet to be processed by the action server")
+            self.path_aborted = True
         elif status == GoalStatus.ACTIVE:
             rospy.logwarn(
                 "Goal pose " + str(self.goal_send_count) + " is currently being processed by the action server")
@@ -374,19 +376,25 @@ class GlobalPlanningBenchmarkSupervisor:
         elif status == GoalStatus.REJECTED:
             rospy.logwarn("Goal pose " + str(
                 self.goal_send_count) + " was rejected by the action server without being processed, because the goal was unattainable or invalid")
+            self.path_aborted = True
         elif status == GoalStatus.PREEMPTING:
             rospy.logwarn("Goal pose " + str(
                 self.goal_send_count) + " received a cancel request after it started executing and has not yet completed execution")
+            self.path_aborted = True
         elif status == GoalStatus.RECALLING:
             rospy.logwarn("Goal pose " + str(
                 self.goal_send_count) + " received a cancel request before it started executing but the action server has not yet confirmed that the goal is canceled")
+            self.path_aborted = True
         elif status == GoalStatus.RECALLED:
             rospy.logwarn("Goal pose " + str(
                 self.goal_send_count) + " received a cancel request before it started executing and was successfully cancelled")
+            self.path_aborted = True
         elif status == GoalStatus.LOST:
             rospy.logwarn("Goal pose " + str(self.goal_send_count) + " received a cancel request. Goal lost!")
+            self.path_aborted = True
         else:
             rospy.logerr("There is no GoalStatus")
+            self.path_aborted = True
 
     def start_run(self, initial_node, goal_node):
         print_info("prepare start run for each path ")
@@ -401,8 +409,8 @@ class GlobalPlanningBenchmarkSupervisor:
 
         self.voronoi_distance_callback(i_point=initial_node, g_point=goal_node, i_node_pose=initial_node_pose, g_node_pose=goal_node_pose)
         #self.longest_path_publisher_callback(initial_node)
-
-        self.voronoi_publisher.publish(self.point_cloud)
+        if self.path_and_goal_write_token:
+            self.voronoi_publisher.publish(self.point_cloud)
         # TODO check plan or pointcloud
         # self.vor_path_pub.publish(self.my_path)
         # self.voronoi_longest_path_publisher.publish(self.shortest_path_point_cloud)
@@ -437,7 +445,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # goal node send
         if not self.navigate_to_pose_action_client.wait_for_server(
-                timeout=rospy.Duration.from_sec(5.0)):  # just for control duration time is not important in here
+                timeout=rospy.Duration.from_sec(10.0)):  # just for control duration time is not important in here
             self.write_event('failed_to_communicate_with_navigation_node', rospy.Time.now().to_sec())
             raise RunFailException("navigate_to_pose action server not available")
 
@@ -544,32 +552,35 @@ class GlobalPlanningBenchmarkSupervisor:
         # print(event)
 
     def pathCallback(self, path_message):
-        self.execution_timer2 = rospy.Time.now().to_time()
-        if not self.path_receive:
-            self.pathCounter += 1
-            # print("sending path message ", pathMessage)
-            print("Path message received for initial node {}, sending goal node {} ".format(self.send_initial_node, self.send_goal_node))
-            self.execution_time_callback(self.send_initial_node, self.send_goal_node, self.send_initial_node_pose, self.send_goal_node_pose, self.execution_timer, self.execution_timer2)
-            self.euclidean_distance_callback(path_message, self.send_initial_node, self.send_goal_node, self.send_initial_node_pose, self.send_goal_node_pose)
-            self.path_receive = True
-            self.latest_path = path_message
+        if not path_message.poses:
+            self.path_aborted = True
+        else: 
+            self.execution_timer2 = rospy.Time.now().to_time()
+            if not self.path_receive:
+                self.pathCounter += 1
+                # print("sending path message ", pathMessage)
+                print("Path message received for initial node {}, sending goal node {} ".format(self.send_initial_node, self.send_goal_node))
+                self.execution_time_callback(self.send_initial_node, self.send_goal_node, self.send_initial_node_pose, self.send_goal_node_pose, self.execution_timer, self.execution_timer2)
+                self.euclidean_distance_callback(path_message, self.send_initial_node, self.send_goal_node, self.send_initial_node_pose, self.send_goal_node_pose)
+                self.path_receive = True
+                self.latest_path = path_message
 
-            if self.path_and_goal_write_token:
-                for pose in path_message.poses:
-                    msg_time = pose.header.stamp.to_sec()
-                    with open(self.received_plan_file_path, 'a') as path_file:
-                        path_file.write(
-                            "{counter}, {t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
-                                counter=self.pathCounter,
-                                t=msg_time,
-                                positionX=pose.pose.position.x,
-                                positionY=pose.pose.position.y,
-                                positionZ=pose.pose.position.z,
-                                orientationX=pose.pose.orientation.x,
-                                orientationY=pose.pose.orientation.y,
-                                orientationZ=pose.pose.orientation.z,
-                                orientationW=pose.pose.orientation.w
-                            ))
+                if self.path_and_goal_write_token:
+                    for pose in path_message.poses:
+                        msg_time = pose.header.stamp.to_sec()
+                        with open(self.received_plan_file_path, 'a') as path_file:
+                            path_file.write(
+                                "{counter}, {t}, {positionX}, {positionY}, {positionZ}, {orientationX}, {orientationY}, {orientationZ}, {orientationW}\n".format(
+                                    counter=self.pathCounter,
+                                    t=msg_time,
+                                    positionX=pose.pose.position.x,
+                                    positionY=pose.pose.position.y,
+                                    positionZ=pose.pose.position.z,
+                                    orientationX=pose.pose.orientation.x,
+                                    orientationY=pose.pose.orientation.y,
+                                    orientationZ=pose.pose.orientation.z,
+                                    orientationW=pose.pose.orientation.w
+                                ))
 
     def euclidean_distance_callback(self, pathMessage, i_point, g_point, i_node_pose, g_node_pose):
         try:
@@ -658,7 +669,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
     def execution_time_callback(self, i_point, g_point, i_node_pose, g_node_pose, time_message, time_message2):
         try:
-            msg_time = time_message2 - time_message
+            msg_time = abs(time_message2 - time_message)
             rospy.loginfo("Global Planning execution time: " + str(msg_time))
 
             self.execution_time_df = self.execution_time_df.append({

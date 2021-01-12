@@ -15,6 +15,6 @@ components_configuration:
   rviz: rviz/default_view.rviz
 
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
-  global_planner_name: [SBPLLatticePlanner]
+  global_planner_name: [SBPLLatticePlanner]  
   sbpl_primitives_name: [genmprim_unicycle_16_prim7_10.mprim, genmprim_unicycle_16_prim9_10.mprim, genmprim_unicycle_16_prim11_10.mprim]
   planner_type: [ADPlanner, ARAPlanner]
