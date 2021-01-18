@@ -1,6 +1,8 @@
 components_configurations_folder: ~/w/catkin_ws/src/global_planning_performance_modelling/config/component_configurations
 
 run_timeout : 36000.0
+robot_model_turtlebot3: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.077, -0.155]]  #for waffle tb3 footprint
+robot_model_agilex_hunter: [[-0.165, -0.3725], [-0.165, 0.3725], [0.815, 0.3725], [0.815, -0.3725]]  # for agilex hunter 2.0
 
 supervisor_component: global_planning_benchmark_supervisor
 
@@ -14,6 +16,9 @@ combinatorial_parameters:        #you can write your combinatorial parameters he
   global_planner_name: [OmplGlobalPlanner]
 #  planner_type: [RRTStar, RRTConnect, PRMStar]
   planner_type: [RRTConnect]
-  lethal_cost: [50, 100, 253]
+  lethal_cost: [150, 200, 253]
+  robot_kinematic: [unicycle]
+  robot_radius: [0.2]
+  robot_major_radius: [0.2]
 #  lethal_cost: [50, 253]
 # for example you can add local_planner_name: [xx, yy, zz]

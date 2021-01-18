@@ -51,14 +51,41 @@ class BenchmarkRun(object):
         global_planner_name = self.run_parameters['global_planner_name']
 
         if global_planner_name == 'GlobalPlanner':
+            robot_kinematic = self.run_parameters['robot_kinematic']
+            robot_radius = self.run_parameters['robot_radius']
+            robot_major_radius = self.run_parameters['robot_major_radius']
             use_dijkstra = self.run_parameters['use_dijkstra']
             lethal_cost = self.run_parameters['lethal_cost']
         elif global_planner_name == 'SBPLLatticePlanner':
             sbpl_primitives_directory_path = path.expanduser(self.benchmark_configuration['sbpl_primitives_path'])
-            sbpl_primitives_name = self.run_parameters['sbpl_primitives_name']
-            sbpl_primitives_file_path = path.join(sbpl_primitives_directory_path, sbpl_primitives_name)
             planner_type = self.run_parameters['planner_type']
+            robot_kinematic = self.run_parameters['robot_kinematic']
+            robot_radius = self.run_parameters['robot_radius']
+            robot_major_radius = self.run_parameters['robot_major_radius']
+            resolution = self.run_parameters['resolution']
+            if resolution == 0.05:
+                resolution_str = "005"
+            elif resolution == 0.1:
+                resolution_str = "01"
+            elif resolution == 0.25:
+                resolution_str = "025"
+            else:
+                raise ValueError()
+            if robot_kinematic == 'unicycle':
+                primitives_per_angle = self.run_parameters['primitives_per_angle']
+                sbpl_primitives_name ="res" + str(resolution_str) + robot_kinematic + "16prim" + str(primitives_per_angle) + ".mprim"
+            elif robot_kinematic == 'bicycle':
+                linear_angle = self.run_parameters['linear_angle']
+                max_steering_angle = self.run_parameters['max_steering_angle']
+                sbpl_primitives_name = "res" + str(resolution_str) + robot_kinematic + "16prim" + str(max_steering_angle) + "lin_ang"+ str(linear_angle)  + ".mprim"
+            else:
+                print_error("Wrong robot kinematic model defined. Only unicycle or bicycle model can be used.")
+                raise ValueError()
+            sbpl_primitives_file_path = path.join(sbpl_primitives_directory_path, sbpl_primitives_name)
         elif global_planner_name == 'OmplGlobalPlanner':
+            robot_kinematic = self.run_parameters['robot_kinematic']
+            robot_radius = self.run_parameters['robot_radius']
+            robot_major_radius = self.run_parameters['robot_major_radius']
             planner_type = self.run_parameters['planner_type']
             lethal_cost = self.run_parameters['lethal_cost']
             # TODO add some parameters for OMPL
@@ -77,6 +104,8 @@ class BenchmarkRun(object):
 
         # benchmark_configuration_parameters
         self.run_timeout = self.benchmark_configuration['run_timeout']
+        self.robot_footprint_turtlebot3 = self.benchmark_configuration['robot_model_turtlebot3']
+        self.robot_footprint_agilex_hunter = self.benchmark_configuration['robot_model_agilex_hunter']
 
         # components original configuration paths (inside your workspace path)
         components_configurations_folder = path.expanduser(self.benchmark_configuration['components_configurations_folder'])
@@ -119,10 +148,7 @@ class BenchmarkRun(object):
         supervisor_configuration['pid_father'] = os.getpid()
         supervisor_configuration['ground_truth_map_info_path'] = self.map_info_file_path
         supervisor_configuration['run_timeout'] = self.run_timeout
-        if not path.exists(path.dirname(self.supervisor_configuration_path)):
-            os.makedirs(path.dirname(self.supervisor_configuration_path))
-        with open(self.supervisor_configuration_path, 'w') as supervisor_configuration_file:
-            yaml.dump(supervisor_configuration, supervisor_configuration_file, default_flow_style=False)
+        
 
         # copy the configuration of move_base to the run folder
         # move_base global planner config
@@ -130,26 +156,48 @@ class BenchmarkRun(object):
             move_base_global_planner_configuration = yaml.load(move_base_global_planner_configuration_file)
             move_base_global_planner_configuration['planner_patience'] = self.run_timeout
             move_base_global_planner_configuration['controller_patience'] = self.run_timeout
+            if robot_kinematic == 'unicycle':
+                move_base_global_planner_configuration['footprint'] = self.robot_footprint_turtlebot3
+            elif robot_kinematic == 'bicycle':
+                move_base_global_planner_configuration['footprint'] = self.robot_footprint_agilex_hunter
+            else:
+                raise ValueError()
 
         if global_planner_name == 'GlobalPlanner':
+            supervisor_configuration['robot_kinematic'] = robot_kinematic
+            supervisor_configuration['robot_radius'] = robot_radius
+            supervisor_configuration['robot_major_radius'] = robot_major_radius
             move_base_global_planner_configuration['GlobalPlanner']['use_dijkstra'] = use_dijkstra
             move_base_global_planner_configuration['GlobalPlanner']['use_grid_path'] = not use_dijkstra
             move_base_global_planner_configuration['GlobalPlanner']['lethal_cost'] = lethal_cost
             # todo we can add neutral_cost and cost_factor
         elif global_planner_name == 'SBPLLatticePlanner':
+            supervisor_configuration['robot_kinematic'] = robot_kinematic
+            supervisor_configuration['robot_radius'] = robot_radius
+            supervisor_configuration['robot_major_radius'] = robot_major_radius
             move_base_global_planner_configuration['SBPLLatticePlanner']['planner_type'] = planner_type
             move_base_global_planner_configuration['SBPLLatticePlanner']['primitive_filename'] = sbpl_primitives_file_path
             # todo
         elif global_planner_name == 'OmplGlobalPlanner':
+            supervisor_configuration['robot_kinematic'] = robot_kinematic
+            supervisor_configuration['robot_radius'] = robot_radius
+            supervisor_configuration['robot_major_radius'] = robot_major_radius
             move_base_global_planner_configuration['OmplGlobalPlanner']['planner_type'] = planner_type
             move_base_global_planner_configuration['OmplGlobalPlanner']['lethal_cost'] = lethal_cost
         else:
             raise ValueError()
-
+        
+        #move_base global config
         if not path.exists(path.dirname(self.move_base_global_planner_configuration_path)):
             os.makedirs(path.dirname(self.move_base_global_planner_configuration_path))
         with open(self.move_base_global_planner_configuration_path, 'w') as move_base_global_planner_configuration_file:
             yaml.dump(move_base_global_planner_configuration, move_base_global_planner_configuration_file, default_flow_style=False)
+
+        #supervisor global config
+        if not path.exists(path.dirname(self.supervisor_configuration_path)):
+            os.makedirs(path.dirname(self.supervisor_configuration_path))
+        with open(self.supervisor_configuration_path, 'w') as supervisor_configuration_file:
+            yaml.dump(supervisor_configuration, supervisor_configuration_file, default_flow_style=False)
 
         # move_base general config (costmaps, local_planner, etc)
         if not path.exists(path.dirname(self.move_base_configuration_path)):
@@ -217,6 +265,7 @@ class BenchmarkRun(object):
         }
         recorder_params = {
             'bag_file_path': path.join(self.run_output_folder, "benchmark_data.bag"),
+            'not_recorded_topics' : "/move_base/DWAPlannerROS/(.*)",
             'output': "log"
         }
         # recorder_params2 = {

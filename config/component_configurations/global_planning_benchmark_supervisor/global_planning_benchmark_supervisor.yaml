@@ -2,8 +2,8 @@
 goal_tolerance: 0.2
 # run_timeout: 36000.0  
 ps_snapshot_period: 10.0
-#robot_radius: 0.2 # turtlebot3
-robot_radius: 0.4 # agilex hunter
+# robot_radius: 0.2 # turtlebot3
+# robot_radius: 0.4 # agilex hunter
 random_points: 9
 
 # topic names

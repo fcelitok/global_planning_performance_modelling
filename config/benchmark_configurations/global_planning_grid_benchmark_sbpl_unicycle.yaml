@@ -1,6 +1,8 @@
 components_configurations_folder: ~/w/catkin_ws/src/global_planning_performance_modelling/config/component_configurations
 
 run_timeout : 36000.0
+robot_model_turtlebot3: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.077, -0.155]]  #for waffle tb3 footprint
+robot_model_agilex_hunter: [[-0.165, -0.3725], [-0.165, 0.3725], [0.815, 0.3725], [0.815, -0.3725]]  # for agilex hunter 2.0
 
 sbpl_primitives_path: ~/w/catkin_ws/src/global_planning_performance_modelling/primitives
 
@@ -16,5 +18,11 @@ components_configuration:
 
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
   global_planner_name: [SBPLLatticePlanner]  
-  sbpl_primitives_name: [genmprim_unicycle_16_prim7_10.mprim, genmprim_unicycle_16_prim9_10.mprim, genmprim_unicycle_16_prim11_10.mprim]
-  planner_type: [ADPlanner, ARAPlanner]
+#  sbpl_primitives_name: [genmprim_unicycle_16_prim7_10.mprim, genmprim_unicycle_16_prim9_10.mprim, genmprim_unicycle_16_prim11_10.mprim]
+#  sbpl_primitives_name: [genmprim_unicycle_16_prim7_10.mprim]
+  robot_kinematic: [unicycle]
+  robot_radius: [0.2]
+  robot_major_radius: [0.2]
+  primitives_per_angle: [7, 9, 11]
+  resolution: [0.05]
+  planner_type: [ADPlanner]

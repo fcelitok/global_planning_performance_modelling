@@ -12,6 +12,7 @@ import geometry_msgs
 import operator
 import pandas as pd
 import random
+import matplotlib.pyplot as plt
 
 import rospy
 import tf2_ros
@@ -74,7 +75,6 @@ class GlobalPlanningBenchmarkSupervisor:
         self.child_frame = rospy.get_param('~child_frame')
         self.robot_base_frame = rospy.get_param('~robot_base_frame')
         self.robot_entity_name = rospy.get_param('~robot_entity_name')
-        self.robot_radius = rospy.get_param('~robot_radius')
         self.goal_tolerance = rospy.get_param('~goal_tolerance')
         self.random_points = rospy.get_param('~random_points')          # define for how many random path will draw
 
@@ -85,6 +85,9 @@ class GlobalPlanningBenchmarkSupervisor:
         self.ground_truth_map_info_path = rospy.get_param('~ground_truth_map_info_path')
 
         # run parameters
+        self.robot_kinematic = rospy.get_param('~robot_kinematic')
+        self.robot_radius = rospy.get_param('~robot_radius')
+        self.robot_major_radius = rospy.get_param('~robot_major_radius')
         run_timeout = rospy.get_param('~run_timeout')
         self.ground_truth_map = ground_truth_map.GroundTruthMap(self.ground_truth_map_info_path)
 
@@ -95,6 +98,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.path_receive = False
         self.path_aborted = False
         self.path_distance_token = False
+        self.voronoi_visualize = False
         self.path_and_goal_write_token = False      # If this is false it will not write csv file to your path goal and initial points
         self.pathCounter = 0
         self.all_path_counter = 0
@@ -134,7 +138,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # setup publishers
         self.initial_pose_publisher = rospy.Publisher(initial_pose_topic, PoseWithCovarianceStamped, queue_size=10)
-        if self.path_and_goal_write_token:
+        if self.voronoi_visualize:
             self.voronoi_publisher = rospy.Publisher('VoronoiPointCloud', PointCloud, queue_size=10)
         # TODO check path or point cloud
         # self.voronoi_longest_path_publisher = rospy.Publisher('Longest_voronoi_path', PointCloud, queue_size=10)
@@ -188,21 +192,29 @@ class GlobalPlanningBenchmarkSupervisor:
 
                 rospy.sleep(0.5)
 
-    # TODO: In ANAPlanner in some points it is sending wrong goal point but for this wrong point it is making path
     # collect all initial nodes and goal nodes in dictionary
     def voronoi_graph_node_finder(self):
         print_info("Entered -> deleaved reduced Voronoi graph from ground truth map")
 
-        # get deleaved reduced Voronoi graph from ground truth map
-        self.voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=1 * self.robot_radius).copy()
+        if self.robot_kinematic == 'unicycle':
+            safety_factor = 2
+            major_safety_factor = 2
+        else:
+            safety_factor = 1
+            major_safety_factor = 1.35
 
+        # get deleaved reduced Voronoi graph from ground truth map
+        self.voronoi_graph = self.ground_truth_map.deleaved_reduced_voronoi_graph(minimum_radius=safety_factor * self.robot_radius).copy()
+        
         # get all voronoi graph nodes from ground truth map
         self.real_voronoi_graph = self.ground_truth_map.voronoi_graph.subgraph(filter(
-            lambda n: self.ground_truth_map.voronoi_graph.nodes[n]['radius'] >= 1 * self.robot_radius,
-            self.ground_truth_map.voronoi_graph.nodes
-        )).copy()
+            lambda n: self.ground_truth_map.voronoi_graph.nodes[n]['radius'] >= safety_factor * self.robot_radius,
+            self.ground_truth_map.voronoi_graph.nodes)).copy()
 
-        self.all_path_counter = len(self.voronoi_graph.nodes) + (len(self.voronoi_graph.nodes)*self.random_points)
+        self.radius_voronoi_graph = self.voronoi_graph.subgraph(filter(lambda n: self.voronoi_graph.nodes[n]['radius'] > major_safety_factor * self.robot_major_radius, self.voronoi_graph.nodes)).copy()
+
+        self.all_path_counter = len(self.radius_voronoi_graph.nodes) + (len(self.radius_voronoi_graph.nodes)*self.random_points)
+        # radius_voronoi_nodes = list(filter(lambda n: self.voronoi_graph.nodes[n]['radius'] > 0.65, self.voronoi_graph))
 
         minimum_length_paths = nx.all_pairs_dijkstra_path(self.voronoi_graph, weight='voronoi_path_distance')
         minimum_length_costs = dict(nx.all_pairs_dijkstra_path_length(self.voronoi_graph, weight='voronoi_path_distance'))
@@ -229,12 +241,20 @@ class GlobalPlanningBenchmarkSupervisor:
         # self.total_paths = len(voronoi_graph.nodes)
 
         # find initial and goal nodes
-        for node in list(self.voronoi_graph.nodes):
+        for node in list(self.radius_voronoi_graph.nodes):
             # node our initial points and we will find farthest node
+            cost_copy = costs.copy()
             initial_node = node
-            farthest_node = max(costs[node].items(), key=operator.itemgetter(1))[0]
-            # print("Max Costs[{}][{}] = {}".format(node, farthest_node, max_node_cost))
-            max_node_cost = costs[node][farthest_node]
+            for i in range(len(list(self.radius_voronoi_graph.nodes))):
+                farthest_node = max(cost_copy[node].items(), key=operator.itemgetter(1))[0]
+                if self.voronoi_graph.nodes[farthest_node]['radius'] > major_safety_factor * self.robot_major_radius :
+                    max_node_cost = cost_copy[node][farthest_node]
+                    break
+                else:
+                    del cost_copy[node][farthest_node]
+                    i+=1
+                # radius_voronoi_nodes = list(filter(lambda n: self.voronoi_graph.nodes[n]['radius'] > 0.65, self.voronoi_graph))
+                # print("Max Costs[{}][{}] = {}".format(node, farthest_node, max_node_cost))
 
             goal_node_list = list()
             goal_node_list.append(farthest_node)
@@ -250,17 +270,19 @@ class GlobalPlanningBenchmarkSupervisor:
 
             remove_list = [initial_node, farthest_node]
 
-            if 0 <= self.random_points < len(self.voronoi_graph.nodes)-1:
-                random_final_point_list = random.sample(list(set(list(self.voronoi_graph.node)) - set(remove_list)), self.random_points)
+            if 0 <= self.random_points < len(self.radius_voronoi_graph.nodes)-1:
+                random_final_point_list = random.sample(list(set(list(self.radius_voronoi_graph.nodes)) - set(remove_list)), self.random_points)
             else:
-                print_error("Cannot select random points more than nodes")
-                rospy.signal_shutdown("Signal shutdown because of too much random points")
-                break
+                self.random_points = len(self.radius_voronoi_graph.nodes)-2
+                random_final_point_list = random.sample(list(set(list(self.radius_voronoi_graph.nodes)) - set(remove_list)), self.random_points)
+                print_error("Cannot select random points more than nodes. Random point changed: ",self.random_points)
+                # rospy.signal_shutdown("Signal shutdown because of too much random points")
+                # break
 
             for goal_node in random_final_point_list:
                 goal_node_list.append(goal_node)
                 shortest_path_for_goal = nx.shortest_path(self.real_voronoi_graph, initial_node, goal_node)
-                shortest_path_ord_dict[goal_node] = shortest_path_for_goal    # TODO there is problem in shortest path
+                shortest_path_ord_dict[goal_node] = shortest_path_for_goal   
                 node_cost_for_goal = costs[initial_node][goal_node]
                 goal_and_distance_dict[goal_node] = node_cost_for_goal
 
@@ -282,7 +304,7 @@ class GlobalPlanningBenchmarkSupervisor:
                 self.mean_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, node_diameter_mean)
                 self.mean_normalized_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, normalized_node_diameter_mean)
                 self.minimum_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, minimum_node_diameter)
-        if self.path_and_goal_write_token:
+        if self.voronoi_visualize:
             point = Point32()
             self.point_cloud = PointCloud()
             self.point_cloud.header.stamp = rospy.Time.now()
@@ -409,7 +431,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
         self.voronoi_distance_callback(i_point=initial_node, g_point=goal_node, i_node_pose=initial_node_pose, g_node_pose=goal_node_pose)
         #self.longest_path_publisher_callback(initial_node)
-        if self.path_and_goal_write_token:
+        if self.voronoi_visualize:
             self.voronoi_publisher.publish(self.point_cloud)
         # TODO check plan or pointcloud
         # self.vor_path_pub.publish(self.my_path)
@@ -445,7 +467,7 @@ class GlobalPlanningBenchmarkSupervisor:
 
         # goal node send
         if not self.navigate_to_pose_action_client.wait_for_server(
-                timeout=rospy.Duration.from_sec(10.0)):  # just for control duration time is not important in here
+                timeout=rospy.Duration.from_sec(100.0)):  # just for control duration time is not important in here
             self.write_event('failed_to_communicate_with_navigation_node', rospy.Time.now().to_sec())
             raise RunFailException("navigate_to_pose action server not available")
 

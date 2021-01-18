@@ -2,8 +2,9 @@
 <launch>
 
     <arg name="bag_file_path" />
+    <arg name="not_recorded_topics" />
     <arg name="output" />
 
-	<node name="recorder" pkg="rosbag" type="record" args="--lz4 -a -x /cmd_vel -O $(arg bag_file_path)" output="$(arg output)" />
+	<node name="recorder" pkg="rosbag" type="record" args="--lz4 -a -O $(arg bag_file_path) -x $(arg not_recorded_topics)" output="$(arg output)" />
 
 </launch>
