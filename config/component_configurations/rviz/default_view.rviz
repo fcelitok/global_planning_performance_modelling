@@ -57,19 +57,13 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        base_footprint:
-          Value: true
-        map:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: false
       Tree:
-        map:
-          base_footprint:
-            {}
+        {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -241,7 +235,7 @@ Visualization Manager:
       Topic: /move_base/GlobalPlanner/plan
       Unreliable: false
       Value: true
-    - Alpha: 0.800000011920929
+    - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 10
@@ -250,7 +244,7 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud
-      Color: 255; 25; 0
+      Color: 115; 210; 22
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: false
@@ -259,19 +253,19 @@ Visualization Manager:
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: Longest_path_voronoi
+      Name: Radius_voronoi
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.05999999865889549
+      Size (m): 0.20000000298023224
       Style: Flat Squares
       Topic: /Longest_voronoi_path
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
       Value: false
-    - Alpha: 0.30000001192092896
+    - Alpha: 0.699999988079071
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 10
@@ -280,7 +274,7 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud
-      Color: 255; 255; 255
+      Color: 204; 0; 0
       Color Transformer: FlatColor
       Decay Time: 0
       Enabled: false
@@ -294,7 +288,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.05000000074505806
+      Size (m): 0.07000000029802322
       Style: Flat Squares
       Topic: /VoronoiPointCloud
       Unreliable: false
@@ -334,7 +328,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 47.38240432739258
+      Scale: 18.810361862182617
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
       X: 0
