@@ -100,7 +100,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.path_aborted = False
         self.path_distance_token = False    
         self.voronoi_visualize = False               # If you want to see voronio graph in rviz open here
-        self.path_and_goal_write_token = False      # If this is false it will not write csv file to your path goal and initial points
+        self.path_and_goal_write_token = True      # If this is false it will not write csv file to your path goal and initial points
         self.pathCounter = 0
         self.all_path_counter = 0
         self.initial_pose_counter = 1
