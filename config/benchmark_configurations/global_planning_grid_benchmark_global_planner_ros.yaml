@@ -17,6 +17,6 @@ combinatorial_parameters:        #you can write your combinatorial parameters he
   robot_kinematic: [unicycle]
   robot_radius: [0.2]
   robot_major_radius: [0.2]
-  use_dijkstra: [true, false]
+  use_dijkstra: [true]
   lethal_cost: [253]
 # etc

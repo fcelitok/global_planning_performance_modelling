@@ -185,6 +185,13 @@ class GlobalPlanningBenchmarkSupervisor:
         # goal_node_key = self.initial_goal_dict[initial_node_key][0]
         # self.start_run(initial_node=initial_node_key, goal_node=goal_node_key)
 
+        # send selected initial and goal point
+        # self.start_run(initial_node=384, goal_node=248)       # airlab
+        # self.start_run(initial_node=20, goal_node=247)        # 7A-2
+        # self.start_run(initial_node=3304, goal_node=247)      # 7A-2
+        # self.start_run(initial_node=3082, goal_node=247)      # 7A-2
+        # self.start_run(initial_node=4945, goal_node=247)      # 7A-2
+
         # send initial node and goal node
         self.write_event('run_start', rospy.Time.now().to_sec())
         for initial_node_key, goal_node_value in self.initial_goal_dict.items():
@@ -247,14 +254,13 @@ class GlobalPlanningBenchmarkSupervisor:
 
         self.radius_voronoi_graph = self.voronoi_graph.subgraph(filter(lambda n: self.voronoi_graph.nodes[n]['radius'] > major_safety_factor * self.robot_major_radius, self.voronoi_graph.nodes)).copy()
 
-        self.all_path_counter = len(self.radius_voronoi_graph.nodes) + (len(self.radius_voronoi_graph.nodes)*self.random_points)
         # radius_voronoi_nodes = list(filter(lambda n: self.voronoi_graph.nodes[n]['radius'] > 0.65, self.voronoi_graph))
 
         # Open this area If you want to see voronoi graph in map
-        # draw_map = 1
+        # draw_map = 0
 
         # if draw_map == 1:
-        #     ground_truth_map_png_path = path.join("/home/furkan/ds/performance_modelling/test_datasets/dataset/airlab", "data", "map.pgm")
+        #     ground_truth_map_png_path = path.join("/home/furkan/ds/performance_modelling/test_datasets/dataset/mexico", "data", "map.pgm")
         #     image = mpimg.imread(ground_truth_map_png_path)
         #     plt.imshow(image)
             
@@ -275,28 +281,30 @@ class GlobalPlanningBenchmarkSupervisor:
         #                 if radius_2 > 0.4:
         #                     x_22, y_22 = self.radius_voronoi_graph.nodes[neighbor_index]['vertex']
         #                     x_2, y_2 = self.ground_truth_map.map_frame_to_image_coordinates([x_22, y_22])
-        #                     plt.plot((x_1, x_2), (y_1, y_2), color='black', linewidth=2.0)
+        #                     plt.plot((x_1, x_2), (y_1, y_2), color='green', linewidth=2.0)
 
         #     num_nodes = 0
-        #     for node_index, node_data in self.real_voronoi_graph.nodes.data():
+        #     for node_index, node_data in self.voronoi_graph.nodes.data():
         #         num_nodes += 1
 
         #         x_11, y_11 = node_data['vertex']
         #         x_1, y_1 = self.ground_truth_map.map_frame_to_image_coordinates([x_11, y_11])
         #         radius_1 = node_data['radius']
 
-        #         plt.scatter(x_1, y_1, color='blue', s=0.5, marker='*')
+        #         plt.scatter(x_1, y_1, color='black', s=1.0, marker='*')
 
         #         # plot segments
-        #         for neighbor_index in self.real_voronoi_graph.neighbors(node_index):
+        #         for neighbor_index in self.voronoi_graph.neighbors(node_index):
         #             if neighbor_index < node_index:
-        #                 radius_2 = self.real_voronoi_graph.nodes[neighbor_index]['radius']
+        #                 radius_2 = self.voronoi_graph.nodes[neighbor_index]['radius']
         #                 if radius_2 > 0.4:
-        #                     x_22, y_22 = self.real_voronoi_graph.nodes[neighbor_index]['vertex']
+        #                     x_22, y_22 = self.voronoi_graph.nodes[neighbor_index]['vertex']
         #                     x_2, y_2 = self.ground_truth_map.map_frame_to_image_coordinates([x_22, y_22])
-        #                     plt.plot((x_1, x_2), (y_1, y_2), color='green', linewidth=0.5)
+        #                     plt.plot((x_1, x_2), (y_1, y_2), color='black', linewidth=0.5)
             
-        #     plt.show()
+        #     # plt.show()
+        #     plt.savefig('/home/furkan/Desktop/my_voronoi.svg', format='svg', dpi=300)
+        #     print("Image SAVED")
         #     rospy.sleep(100)
 
         # find initial and goal nodes
@@ -304,15 +312,16 @@ class GlobalPlanningBenchmarkSupervisor:
             # node our initial points and we will find farthest node
             cost_copy = costs.copy()
             initial_node = node
+
+            connected_component_to_initial = nx.node_connected_component(self.voronoi_graph,initial_node)
             # looking for farthest goal is related to major radius for given inital node
             for i in range(len(list(self.radius_voronoi_graph.nodes))):
-                farthest_node = max(cost_copy[node].items(), key=operator.itemgetter(1))[0]
-                if self.voronoi_graph.nodes[farthest_node]['radius'] > major_safety_factor * self.robot_major_radius :
-                    max_node_cost = cost_copy[node][farthest_node]
+                farthest_node = max(cost_copy[initial_node].items(), key=operator.itemgetter(1))[0]
+                if farthest_node in connected_component_to_initial and self.voronoi_graph.nodes[farthest_node]['radius'] > major_safety_factor * self.robot_major_radius :
+                    max_node_cost = cost_copy[initial_node][farthest_node]
                     break
                 else:
                     del cost_copy[node][farthest_node]
-                    i+=1
                 # radius_voronoi_nodes = list(filter(lambda n: self.voronoi_graph.nodes[n]['radius'] > 0.65, self.voronoi_graph))
                 # print("Max Costs[{}][{}] = {}".format(node, farthest_node, max_node_cost))
 
@@ -330,12 +339,20 @@ class GlobalPlanningBenchmarkSupervisor:
 
             remove_list = [initial_node, farthest_node]
 
+            radius_connected_component_to_initial = set()
+            for comp_node in connected_component_to_initial:
+                if self.voronoi_graph.nodes[comp_node]['radius'] > major_safety_factor * self.robot_major_radius:
+                    radius_connected_component_to_initial.add(comp_node)
+
+            # print("Start Point: ", initial_node, "Farthest: ", farthest_node ," RANDOM POINT: ", radius_connected_component_to_initial)
             # random points selection part
             if 0 <= self.random_points < len(self.radius_voronoi_graph.nodes)-1:
-                random_final_point_list = random.sample(list(set(list(self.radius_voronoi_graph.nodes)) - set(remove_list)), self.random_points)
+                random_final_point_list = random.sample(list(radius_connected_component_to_initial - set(remove_list)), self.random_points)
+                # random_final_point_list = random.sample(list(set(list(self.radius_voronoi_graph.nodes)) - set(remove_list)), self.random_points)
             else:
-                self.random_points = len(self.radius_voronoi_graph.nodes)-2
-                random_final_point_list = random.sample(list(set(list(self.radius_voronoi_graph.nodes)) - set(remove_list)), self.random_points)
+                self.random_points = 0
+                random_final_point_list = random.sample(list(radius_connected_component_to_initial - set(remove_list)), self.random_points)
+                # random_final_point_list = random.sample(list(set(list(self.radius_voronoi_graph.nodes)) - set(remove_list)), self.random_points)
                 print_error("Cannot select random points more than nodes. Random point changed: ",self.random_points)
                 # rospy.signal_shutdown("Signal shutdown because of too much random points")
                 # break
@@ -365,6 +382,9 @@ class GlobalPlanningBenchmarkSupervisor:
                 self.mean_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, node_diameter_mean)
                 self.mean_normalized_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, normalized_node_diameter_mean)
                 self.minimum_passage_width_callback(initial_node, goal_key, initial_node_pose, goal_node_pose, minimum_node_diameter)
+        
+        self.all_path_counter = sum([len(x) for x in self.initial_goal_dict.values()])
+
         if self.voronoi_visualize:
             point = Point32()
             self.point_cloud = PointCloud()
@@ -389,12 +409,14 @@ class GlobalPlanningBenchmarkSupervisor:
         initial_node_pose = Pose()
         initial_node_pose.position.x, initial_node_pose.position.y = self.voronoi_graph.nodes[start_node]['vertex']
         q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
+        # q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=1.5)   # airlab -1.0
         initial_node_pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
         # print("node number:", node, "INITIAL:" , initial_node_pose_stamped)
 
         goal_node_pose = Pose()
         goal_node_pose.position.x, goal_node_pose.position.y = self.voronoi_graph.nodes[final_node]['vertex']
         q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=np.random.uniform(-np.pi, np.pi))
+        # q = pyquaternion.Quaternion(axis=[0, 0, 1], radians=1.5)   # airlab -2.0
         goal_node_pose.orientation = Quaternion(w=q.w, x=q.x, y=q.y, z=q.z)
         # print("farthest node number:",farthest_node, "GOAL:", goal_node_pose)
 
@@ -536,8 +558,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.write_event('start_run_for_each_path', rospy.Time.now().to_sec())
 
         # goal node send
-        if not self.navigate_to_pose_action_client.wait_for_server(
-                timeout=rospy.Duration.from_sec(100.0)):  # just for control duration time is not important in here
+        if not self.navigate_to_pose_action_client.wait_for_server(timeout=rospy.Duration.from_sec(60.0)):  # just for control duration time is not important in here
             self.write_event('failed_to_communicate_with_navigation_node', rospy.Time.now().to_sec())
             raise RunFailException("navigate_to_pose action server not available")
 

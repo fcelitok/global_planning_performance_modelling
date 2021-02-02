@@ -48,7 +48,7 @@ combinatorial_parameters: [
     robot_kinematic: [bicycle],
     robot_radius: [0.4],
     robot_major_radius: [0.65],
-    linear_angle: [1, 2],
+    limit_angle: [1, 2],
     max_steering_angle: [15, 25, 50],
     resolution: [0.05],
     planner_type: [ADPlanner],

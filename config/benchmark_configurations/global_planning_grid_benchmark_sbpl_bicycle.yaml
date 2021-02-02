@@ -25,8 +25,8 @@ combinatorial_parameters:        #you can write your combinatorial parameters he
   robot_kinematic: [bicycle]
   robot_radius: [0.4]
   robot_major_radius: [0.65]
-  linear_angle: [1]
-  max_steering_angle: [50]
+  limit_angle: [1]
+  max_steering_angle: [25]
   resolution: [0.05]
   planner_type: [ADPlanner]
 

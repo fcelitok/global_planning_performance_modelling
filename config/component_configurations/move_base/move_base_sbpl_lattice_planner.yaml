@@ -3,7 +3,7 @@ base_global_planner: SBPLLatticePlanner
 SBPLLatticePlanner:
   environment_type: XYThetaLattice
 #  planner_type: ARAPlanner
-  allocated_time: 10.0
+  allocated_time: 20.0
   initial_epsilon: 3.0
   forward_search: false
 #  primitive_filename: /home/furkan/turtlebot3_melodic_ws/src/sbpl_lattice_planner/matlab/mprim/unicycle_5cm_expensive_turn_in_place_highcost.mprim

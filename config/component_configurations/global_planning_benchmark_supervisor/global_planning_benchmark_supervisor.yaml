@@ -4,7 +4,7 @@ goal_tolerance: 0.2
 ps_snapshot_period: 10.0
 # robot_radius: 0.2 # turtlebot3
 # robot_radius: 0.4 # agilex hunter
-random_points: 9
+random_points: 0
 
 # topic names
 initial_pose_topic: /initialpose
