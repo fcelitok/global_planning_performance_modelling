@@ -11,16 +11,29 @@ supervisor_component: global_planning_benchmark_supervisor
 components_configuration:
   supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml
   move_base: move_base/move_base_tb3.yaml
-
+  move_base_global_planner: move_base/move_base_global_planner_ros.yaml
   move_base_sbpl_planner: move_base/move_base_sbpl_lattice_planner.yaml
-
+  move_base_ompl_planner: move_base/move_base_ompl_global_planner.yaml
   rviz: rviz/default_view.rviz
 
-combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
-  global_planner_name: [SBPLLatticePlanner]  
-  robot_kinematic: [unicycle]
-  robot_radius: [0.2]
-  robot_major_radius: [0.2]
-  primitives_per_angle: [7, 9, 11]
-  resolution: [0.05]
-  planner_type: [ADPlanner]
+#you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
+combinatorial_parameters: [
+  {
+    global_planner_name: [GlobalPlanner],
+    planner_type: [dijkstra, Astar],
+    robot_kinematic: [unicycle],
+    robot_radius: [0.2],
+    robot_major_radius: [0.2],
+    lethal_cost: [253],
+  },
+  {
+    global_planner_name: [OmplGlobalPlanner],
+    planner_type: [RRTStar, RRTConnect, PRMStar],
+    robot_kinematic: [unicycle],
+    robot_radius: [0.2],
+    robot_major_radius: [0.2],
+    lethal_cost: [253],
+  },
+]
+
+

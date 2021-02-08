@@ -70,9 +70,9 @@ local_costmap:
   global_frame: map
   robot_base_frame: base_footprint
 
-  update_frequency: 1.0
-  publish_frequency: 0.0
-  transform_tolerance: 0.5
+  update_frequency: 1.0     # 1.0
+  publish_frequency: 0.0    # 0.0
+  transform_tolerance: 0.5  # it was 0.5
 
   rolling_window: true
   width: 5
@@ -110,9 +110,9 @@ global_costmap:
   global_frame: map
   robot_base_frame: base_footprint
 
-  update_frequency: 1.0
-  publish_frequency: 0.1
-  transform_tolerance: 0.5
+  update_frequency: 1.0     #old value 1.0
+  publish_frequency: 0.1    #old value 0.1
+  transform_tolerance: 0.5 #old value 0.5
 
   width: 200
   height: 200

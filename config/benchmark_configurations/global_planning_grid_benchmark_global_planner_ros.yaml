@@ -4,6 +4,7 @@ run_timeout : 36000.0
 robot_model_turtlebot3: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.077, -0.155]]  #for waffle tb3 footprint
 robot_model_agilex_hunter: [[-0.165, -0.3725], [-0.165, 0.3725], [0.815, 0.3725], [0.815, -0.3725]]  # for agilex hunter 2.0
 
+source_workspace_path: ~/w/catkin_ws/src/
 supervisor_component: global_planning_benchmark_supervisor
 
 components_configuration:
@@ -17,6 +18,7 @@ combinatorial_parameters:        #you can write your combinatorial parameters he
   robot_kinematic: [unicycle]
   robot_radius: [0.2]
   robot_major_radius: [0.2]
-  use_dijkstra: [true]
+  planner_type: [dijkstra, Astar]
+#  use_dijkstra: [true]
   lethal_cost: [253]
 # etc

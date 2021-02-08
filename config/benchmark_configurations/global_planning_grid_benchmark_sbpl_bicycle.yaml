@@ -5,7 +5,7 @@ robot_model_turtlebot3: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.0
 robot_model_agilex_hunter: [[-0.165, -0.3725], [-0.165, 0.3725], [0.815, 0.3725], [0.815, -0.3725]]  # for agilex hunter 2.0
 
 sbpl_primitives_path: ~/w/catkin_ws/src/global_planning_performance_modelling/primitives
-
+source_workspace_path: ~/w/catkin_ws/src/
 supervisor_component: global_planning_benchmark_supervisor
 
 components_configuration:
@@ -17,16 +17,12 @@ components_configuration:
   rviz: rviz/default_view.rviz
 
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
-  global_planner_name: [SBPLLatticePlanner]
-#  sbpl_primitives_name: [matteo_mprim_16_10deg_10_version3.mprim, matteo_mprim_16_20deg_10_version3.mprim, matteo_mprim_16_35deg_10_version3.mprim, matteo_mprim_16_90deg_10_version3.mprim]
-#  sbpl_primitives_name: [new_version_forward_backward_02_40.mprim]
-#  sbpl_primitives_name: [res025deg50.mprim]
-#  sbpl_primitives_name: [v8_forward_backward_065_50_lin_ang1.mprim]  
+  global_planner_name: [SBPLLatticePlanner] 
   robot_kinematic: [bicycle]
   robot_radius: [0.4]
   robot_major_radius: [0.65]
-  limit_angle: [1]
-  max_steering_angle: [25]
+  limit_angle: [1,2]
+  max_steering_angle: [20,25,50]
   resolution: [0.05]
   planner_type: [ADPlanner]
 

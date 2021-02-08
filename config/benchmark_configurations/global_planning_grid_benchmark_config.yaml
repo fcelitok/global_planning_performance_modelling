@@ -5,7 +5,7 @@ robot_model_turtlebot3: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.0
 robot_model_agilex_hunter: [[-0.165, -0.3725], [-0.165, 0.3725], [0.815, 0.3725], [0.815, -0.3725]]  # for agilex hunter 2.0
 
 sbpl_primitives_path: ~/w/catkin_ws/src/global_planning_performance_modelling/primitives
-
+source_workspace_path: ~/w/catkin_ws/src/
 supervisor_component: global_planning_benchmark_supervisor
 
 components_configuration:
@@ -20,10 +20,10 @@ components_configuration:
 combinatorial_parameters: [
   {
     global_planner_name: [GlobalPlanner],
+    planner_type: [dijkstra, Astar],
     robot_kinematic: [unicycle],
     robot_radius: [0.2],
     robot_major_radius: [0.2],
-    use_dijkstra: [true, false],
     lethal_cost: [253],
   },
   {
@@ -36,22 +36,22 @@ combinatorial_parameters: [
   },
   { 
     global_planner_name: [SBPLLatticePlanner],
+    planner_type: [ADPlanner],    
     robot_kinematic: [unicycle],
     robot_radius: [0.2],
     robot_major_radius: [0.2],
     primitives_per_angle: [7, 9, 11],
     resolution: [0.05],
-    planner_type: [ADPlanner],
   },
   { 
     global_planner_name: [SBPLLatticePlanner],
+    planner_type: [ADPlanner],
     robot_kinematic: [bicycle],
     robot_radius: [0.4],
     robot_major_radius: [0.65],
     limit_angle: [1, 2],
     max_steering_angle: [15, 25, 50],
     resolution: [0.05],
-    planner_type: [ADPlanner],
   },
 ]
 

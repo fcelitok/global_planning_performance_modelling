@@ -5,6 +5,7 @@ robot_model_turtlebot3: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.0
 robot_model_agilex_hunter: [[-0.165, -0.3725], [-0.165, 0.3725], [0.815, 0.3725], [0.815, -0.3725]]  # for agilex hunter 2.0
 
 supervisor_component: global_planning_benchmark_supervisor
+source_workspace_path: ~/w/catkin_ws/src/
 
 components_configuration:
   supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml

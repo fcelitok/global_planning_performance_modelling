@@ -558,7 +558,7 @@ class GlobalPlanningBenchmarkSupervisor:
         self.write_event('start_run_for_each_path', rospy.Time.now().to_sec())
 
         # goal node send
-        if not self.navigate_to_pose_action_client.wait_for_server(timeout=rospy.Duration.from_sec(60.0)):  # just for control duration time is not important in here
+        if not self.navigate_to_pose_action_client.wait_for_server(timeout=rospy.Duration.from_sec(360.0)):  # just for control duration time is not important in here
             self.write_event('failed_to_communicate_with_navigation_node', rospy.Time.now().to_sec())
             raise RunFailException("navigate_to_pose action server not available")
 

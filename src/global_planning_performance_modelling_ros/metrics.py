@@ -122,8 +122,8 @@ def number_of_walls_traversed(feasibility_rate_path, environment_folder):
         if row['path_feasibility'] == 1:
             number_of_walls_traversed_dict = dict()
 
-            p_i_x, p_i_y = ground_truth_map_info.map_frame_to_image_coordinates([row['i_x'], row['i_y']])
-            p_g_x, p_g_y = ground_truth_map_info.map_frame_to_image_coordinates([row['g_x'], row['g_y']])
+            p_i_x, p_i_y = ground_truth_map_info.map_frame_to_image_coordinates(row['i_x'], row['i_y'])
+            p_g_x, p_g_y = ground_truth_map_info.map_frame_to_image_coordinates(row['g_x'], row['g_y'])
 
             map_line = np.array(line(p_i_x, p_i_y, p_g_x, p_g_y)).transpose()
 

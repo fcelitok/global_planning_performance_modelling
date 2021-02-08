@@ -6,4 +6,4 @@ docker build \
   --build-arg user_gid=`id -g` \
   --build-arg user_group=`id -g -n $USER` \
   --no-cache \
-  -t ${USER}/global_planning_benchmark:v1 .
+  -t ${USER}/global_planning_benchmark:v2 .
