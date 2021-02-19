@@ -81,9 +81,9 @@ class BenchmarkRun(object):
                 primitives_per_angle = self.run_parameters['primitives_per_angle']
                 sbpl_primitives_name ="res" + str(resolution_str) + robot_kinematic + "16prim" + str(primitives_per_angle) + ".mprim"
             elif robot_kinematic == 'bicycle':
-                limit_angle = self.run_parameters['limit_angle']
+                direction = self.run_parameters['direction']
                 max_steering_angle = self.run_parameters['max_steering_angle']
-                sbpl_primitives_name = "res" + str(resolution_str) + robot_kinematic + "16prim" + str(max_steering_angle) + "lim_ang"+ str(limit_angle)  + ".mprim"
+                sbpl_primitives_name = "res" + str(resolution_str) + robot_kinematic + "16prim" + str(max_steering_angle) + str(direction)  + ".mprim"
             else:
                 print_error("Wrong robot kinematic model defined. Only unicycle or bicycle model can be used.")
                 raise ValueError()

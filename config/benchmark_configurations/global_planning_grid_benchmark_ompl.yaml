@@ -16,8 +16,8 @@ components_configuration:
 combinatorial_parameters:        #you can write your combinatorial parameters here as an dict in grid_benchmarking.py is taking them
   global_planner_name: [OmplGlobalPlanner]
 #  planner_type: [RRTStar, RRTConnect, PRMStar]
-  planner_type: [RRTConnect]
-  lethal_cost: [150, 200, 253]
+  planner_type: [RRTStar, RRTConnect]
+  lethal_cost: [253]
   robot_kinematic: [unicycle]
   robot_radius: [0.2]
   robot_major_radius: [0.2]
