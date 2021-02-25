@@ -1,26 +1,33 @@
-# run parameters
-goal_tolerance: 0.2
-# run_timeout: 36000.0  
-ps_snapshot_period: 10.0
-# robot_radius: 0.2 # turtlebot3
-# robot_radius: 0.4 # agilex hunter
-random_points: 2
+global_planning_benchmark_supervisor:
+  ros__parameters:
 
-# topic names
-initial_pose_topic: /initialpose
-goal_pose_topic: /move_base/goal
-navFnROS_topic: /move_base/NavfnROS/plan
-global_planner_topic: /move_base/GlobalPlanner/plan
-sbpl_lattice_planner_topic: /move_base/SBPLLatticePlanner/plan
-ompl_planner_topic: /move_base/OmplGlobalPlanner/plan 
+    # run parameters
+    goal_tolerance: 0.2
+    run_timeout: 10800.0
+    ps_snapshot_period: 10.0
+    robot_radius: 0.2
+    random_points: 1
 
-# action names
-navigate_to_pose_action: /move_base
+    # topic names
+    initial_pose_topic: /initialpose
+    goal_pose_topic: /goal_pose
+    navFnROS_topic: /plan
+    #global_planner_topic: /plan
+        
+    # service names
+    lifecycle_manager_service: /lifecycle_manager/manage_nodes
+    # global_costmap_get_parameters_service: /local_costmap/local_costmap/get_parameters
+    # pause_physics_service: /pause_physics
+    # unpause_physics_service: /unpause_physics
+    set_entity_state_service: /set_entity_state
 
-# frame names
-fixed_frame: map
-child_frame: base_footprint
-robot_base_frame: base_link_realistic
+    # action names
+    navigate_to_pose_action: /NavigateToPose
 
-# gazebo entity names
-robot_entity_name: robot  # base_footprint
+    # frame names
+    fixed_frame: map
+    child_frame: base_footprint
+    robot_base_frame: base_link_realistic
+
+    # gazebo entity names
+    robot_entity_name: robot  # base_footprint

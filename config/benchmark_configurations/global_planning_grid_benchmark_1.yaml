@@ -1,0 +1,13 @@
+components_configurations_folder: ~/w/catkin_ws/src/global_planning_performance_modelling/config/component_configurations
+
+supervisor_component: global_planning_benchmark_supervisor
+
+components_configuration:
+  supervisor: global_planning_benchmark_supervisor/global_planning_benchmark_supervisor.yaml
+  nav2_navigation: nav2_navigation/nav2_navigation_1.yaml
+  #move_base_global_planner: nav2_navigation/move_base_global_planner_ros.yaml
+  rviz: rviz/nav2_default_view.rviz
+
+combinatorial_parameters:
+  global_planner_name: [NavfnPlanner]
+  use_astar: [false, true]
