@@ -43,7 +43,7 @@ def main():
     # noinspection PyBroadException
     try:
         node = GlobalPlanningBenchmarkSupervisor()
-        # node.start_run()
+        node.for_loop_start_run()
         rospy.spin()
 
     except KeyboardInterrupt:
@@ -192,6 +192,7 @@ class GlobalPlanningBenchmarkSupervisor:
         # self.start_run(initial_node=3082, goal_node=247)      # 7A-2
         # self.start_run(initial_node=4945, goal_node=247)      # 7A-2
 
+    def for_loop_start_run(self):
         # send initial node and goal node
         self.write_event('run_start', rospy.Time.now().to_sec())
         for initial_node_key, goal_node_value in self.initial_goal_dict.items():
