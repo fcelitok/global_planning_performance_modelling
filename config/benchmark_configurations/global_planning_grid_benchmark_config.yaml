@@ -4,7 +4,7 @@ run_timeout : 36000.0
 robot_model_turtlebot3: [[-0.205, -0.155], [-0.205, 0.155], [0.077, 0.155], [0.077, -0.155]]  #for waffle tb3 footprint
 robot_model_agilex_hunter: [[-0.165, -0.3725], [-0.165, 0.3725], [0.815, 0.3725], [0.815, -0.3725]]  # for agilex hunter 2.0
 
-sbpl_primitives_path: ~/w/catkin_ws/src/global_planning_performance_modelling/primitives
+sbpl_primitives_path: ~/w/catkin_ws/src/global_planning_performance_modelling/primitives/all_primitives
 source_workspace_path: ~/w/catkin_ws/src/
 supervisor_component: global_planning_benchmark_supervisor
 
@@ -49,8 +49,8 @@ combinatorial_parameters: [
     robot_kinematic: [bicycle],
     robot_radius: [0.4],
     robot_major_radius: [0.65],
-    limit_angle: [1, 2],
-    max_steering_angle: [15, 25, 50],
+    direction: [backwardandforward, onlyforward],
+    max_steering_angle: [20, 25, 30, 50],
     resolution: [0.05],
   },
 ]
