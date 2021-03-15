@@ -2,5 +2,5 @@ base_global_planner: ompl_global_planner/OmplGlobalPlanner
 
 OmplGlobalPlanner:
   disable_poseArray: false  # default: false 
-  time_out: 5.0  # default: 5.0
+# time_out: 5.0  # default: 5.0
   

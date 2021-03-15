@@ -94,6 +94,7 @@ class BenchmarkRun(object):
             robot_major_radius = self.run_parameters['robot_major_radius']
             planner_type = self.run_parameters['planner_type']
             lethal_cost = self.run_parameters['lethal_cost']
+            time_out = self.run_parameters['time_out']
             # TODO add some parameters for OMPL
         else:
             raise ValueError()
@@ -192,6 +193,7 @@ class BenchmarkRun(object):
             supervisor_configuration['robot_major_radius'] = robot_major_radius
             move_base_global_planner_configuration['OmplGlobalPlanner']['planner_type'] = planner_type
             move_base_global_planner_configuration['OmplGlobalPlanner']['lethal_cost'] = lethal_cost
+            move_base_global_planner_configuration['OmplGlobalPlanner']['time_out'] = time_out
         else:
             raise ValueError()
         

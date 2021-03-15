@@ -33,6 +33,7 @@ combinatorial_parameters: [
     robot_radius: [0.2],
     robot_major_radius: [0.2],
     lethal_cost: [253],
+    time_out: [2.0, 5.0, 10.0],
   },
   { 
     global_planner_name: [SBPLLatticePlanner],
