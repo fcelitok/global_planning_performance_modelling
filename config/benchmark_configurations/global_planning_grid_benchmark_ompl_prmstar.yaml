@@ -21,6 +21,6 @@ combinatorial_parameters:        #you can write your combinatorial parameters he
   robot_kinematic: [unicycle]
   robot_radius: [0.2]
   robot_major_radius: [0.2]
-  time_out: [2.0, 10.0] # default: 5.0
+  time_out: [2.0, 5.0, 10.0] # default: 5.0
 #  lethal_cost: [50, 253]
 # for example you can add local_planner_name: [xx, yy, zz]
